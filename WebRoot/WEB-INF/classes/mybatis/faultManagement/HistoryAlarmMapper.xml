@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="HistoryAlarmMapper">
+
+	<!-- 设备类型  -->
+	<resultMap type="com.fh.entity.faultManagement.historyAlarm.DeviceType" id="deviceTypeResultMap">
+		<id column="id" property="deviceId" />
+		<result column="display_name" property="deviceName" />
+		<result column="equip_id" property="equipId" />
+		<result column="equip_resource" property="equipResource" />
+	</resultMap>
+	
+	<resultMap type="com.fh.entity.faultManagement.historyAlarm.HistoryAlarmPieChartData" id="pieChartResultMap">
+		<result column="attribute" property="chartShowName" />
+		<result column="alarmLogCount" property="charShowCount" />
+	</resultMap>
+	
+	<!--设备类型表名 -->
+	<sql id="deviceTypeTableName">
+		equip_base_info
+	</sql>
+	<!-- 设备类型字段 -->
+	<sql id="deviceTypeField">
+		id,
+		equip_id,
+		equip_resource,
+		equip_ipaddr,
+		equip_route,
+		equip_serial,
+		equip_factory,
+		factory_duty,
+		factory_phone,
+		equip_use,
+		use_duty,
+		use_phone,
+		location,
+		belong,
+		belong_shelf,
+		status,
+		belong_manager,
+		display_name,
+		manage_ip
+	</sql>
+	
+	<!--告警日志表名 -->
+	<sql id="alarmLogTableName">
+		alarm_log
+	</sql>
+	<!-- 写入日志记录的字段 -->
+	<sql id="insertAlarmLogField">
+		alarmSource,
+		alarmCode,
+		raisedTime,
+		lastChangeTime,
+		ackTime,
+		ackUserName,
+		clearTime,
+		clearUserName,
+		additionPairs,
+		comments
+	</sql>
+	<sql id="insertAlarmLogFieldValue">
+		#{alarmSource},
+		#{alarmCode},
+		#{raisedTime},
+		#{lastChangeTime},
+		#{ackTime},
+		#{ackUserName},
+		#{clearTime},
+		#{clearUserName},
+		#{additionPairs},
+		#{comments}
+	</sql>
+	
+	<!-- 字段 -->
+	<sql id="alarmLogField">
+		serialNumber,
+		alarmSource,
+		alarmCode,
+		raisedTime,
+		lastChangeTime,
+		ackTime,
+		ackUserName,
+		clearTime,
+		clearUserName,
+		additionPairs,
+		comments
+	</sql>
+	<sql id="alarmLogFieldValue">
+		#{serialNumber},
+		#{alarmSource},
+		#{alarmCode},
+		#{raisedTime},
+		#{lastChangeTime},
+		#{ackTime},
+		#{ackUserName},
+		#{clearTime},
+		#{clearUserName},
+		#{additionPairs},
+		#{comments}
+	</sql>
+	
+	<!--查询所有的设备类型 -->
+	<select id="findAllDeviceType" resultMap="deviceTypeResultMap">
+		select
+		<include refid="deviceTypeField"></include>
+		from
+		<include refid="deviceTypeTableName"></include>
+	</select>
+	
+	<!--根据source和code查询设备 -->
+	<select id="selectDeviceTypeBySourceAndCode" resultMap="deviceTypeResultMap">
+		select
+		<include refid="deviceTypeField"></include>
+		from
+		<include refid="deviceTypeTableName"></include>
+		where 1=1
+		and source = #{source}
+		and code = #{code}
+	</select>
+	
+	<!--统计告警日志总数 -->
+	<select id="findAllDbAlarmLogCount" resultType="pageData">
+		select count(1) as alarmLogCount
+		from
+		<include refid="alarmLogTableName"></include>
+	</select>
+	
+	<!--条件过滤告警日志记录 -->
+	<select id="findAllDbAlarmLog" parameterType="page" resultType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		select
+		<include refid="alarmLogField"></include>
+		from
+		<include refid="alarmLogTableName"></include> alarmLog
+		where 1=1
+		<choose>
+			<when test="pageData.isConfirm != null and pageData.isConfirm != ''">
+				and alarmLog.ack_time is not null
+			</when>
+		</choose>
+		<choose>
+			<when test="pageData.isClear != null and pageData.isClear != ''">
+				and alarmLog.cleared_time is not null
+			</when>
+		</choose>
+		<if test="pageData.deviceType != null and pageData.deviceType != ''">
+			and alarmLog.source=#{pageData.source} 
+		</if>
+		<if test="pageData.startDatetime != null and pageData.startDatetime != ''">
+			and alarmLog.raised_time &gt;= #{pageData.startDatetime} 
+		</if>
+		<if test="pageData.endDatetime != null and pageData.endDatetime != ''">
+			and alarmLog.raised_time &lt;= #{pageData.endDatetime} 
+		</if>
+		<if test="pageSize!=0">
+			limit #{currentStartIndex},#{pageSize}
+		</if>
+	</select>
+	
+	<!--按照设备类型统计 -->
+	<select id="countByDeviceType" parameterType="pageData" resultMap="pieChartResultMap">
+		select count(1) as alarmLogCount,source as attribute
+		from
+		<include refid="alarmLogTableName"></include> alarmLog
+		where 1=1
+		group by source
+	</select>
+	
+	<!--按照告警级别统计 -->
+	<select id="countByAlarmLevel" parameterType="pageData" resultMap="pieChartResultMap">
+		select count(1) as alarmLogCount,code as attribute
+		from
+		<include refid="alarmLogTableName"></include> alarmLog
+		where 1=1
+		group by code
+	</select>
+	
+	<!-- 查询日志最大的序列号 -->
+	<select id="selectMaxNoByRaiseTime" parameterType="pageData" resultType="pageData">
+		select
+			max(no) maxNo
+		from
+		<include refid="alarmLogTableName"></include> alarmLog
+		where 1=1
+		<if test="raisedTime != null and raisedTime != '' and raisedTime != 'all'">
+			and alarmLog.raised_time &lt;= #{raisedTime}
+		</if>
+	</select>
+	
+	<!-- 删除日志对应的日志记录 -->
+	<delete id="deleteAlarmLogData" parameterType="pageData" >
+		delete from <include refid="alarmLogTableName"></include>
+		<if test="maxNo != null and maxNo != ''">
+			where no &lt;= #{maxNo}
+		</if>
+	</delete>
+	
+	<!-- 根据source和code查询数据库中的告警 -->
+	<select id="selectAlarmLogBySourceAndCode" parameterType="pageData" resultType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		select
+		<include refid="alarmLogField"></include>
+		from
+		<include refid="alarmLogTableName"></include>
+		where 1=1
+		and source=#{source}
+		and code=#{code}
+	</select>
+	
+	
+	<!-- ==========================MQTT收到告警之后处理数据========================== -->
+	<!-- 将告警记录写入数据库中 -->
+	<insert id="addAlarmLogData" parameterType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		<selectKey resultType="java.lang.Long" order="AFTER" keyProperty="serialNumber">
+          SELECT LAST_INSERT_ID()
+      	</selectKey>
+		insert into
+		<include refid="alarmLogTableName"></include>
+		(
+		<include refid="insertAlarmLogField"></include>
+		) values (
+		<include refid="insertAlarmLogFieldValue"></include>
+		)
+	</insert>
+	
+	<!-- 根据source和code更新数据库中的告警 -->
+	<update id="updateHistoryAlarmLogByObject" parameterType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		update
+		<include refid="alarmLogTableName"></include>
+		set
+			lastChangeTime=#{lastChangeTime},
+			clearTime=#{clearTime},
+			clearUserName=#{clearUserName}
+		where 1=1
+			and serialNumber = #{serialNumber}
+	</update>
+	
+	<!-- MQTT消息处理的去重处理,根据source和code查询数据库中的告警 -->
+	<select id="selectMqttAlarmLogBySourceAndCode" parameterType="pageData" resultType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		select
+		<include refid="alarmLogField"></include>
+		from
+		<include refid="alarmLogTableName"></include>
+		where 1=1
+		and alarmSource=#{alarmSource}
+		and alarmCode=#{alarmCode}
+	</select>
+	
+	
+</mapper>

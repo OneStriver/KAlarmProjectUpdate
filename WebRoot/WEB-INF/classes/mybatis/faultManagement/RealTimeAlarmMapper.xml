@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="RealTimeAlarmMapper">
+
+	<resultMap type="DbAlarmLog" id="alarmLogResultMap">
+		<id column="no" property="no" />
+		<result column="source" property="source" />
+		<result column="code" property="code" />
+		<result column="raised_time" property="raised_time" />
+		<result column="last_change_time" property="last_change_time" />
+		<result column="ack_time" property="ack_time" />
+		<result column="ack_uid" property="ack_uid" />
+		<result column="cleared_time" property="cleared_time" />
+		<result column="cleared_uid" property="cleared_uid" />
+		<result column="addition_pairs" property="addition_pairs" />
+	</resultMap>
+
+	<!--告警日志表名 -->
+	<sql id="alarmLogTableName">
+		alarm_log
+	</sql>
+	<!-- 字段 -->
+	<sql id="alarmLogField">
+		serialNumber,
+		alarmSource,
+		alarmCode,
+		raisedTime,
+		lastChangeTime,
+		ackTime,
+		ackUserId,
+		clearTime,
+		clearUserId,
+		additionPairs,
+		comments
+	</sql>
+	
+	<!-- 根据No查询数据库中的告警 -->
+	<select id="selectRealTimeAlarmLogByNo" parameterType="pageData" resultMap="alarmLogResultMap">
+		select
+		<include refid="alarmLogField"></include>
+		from
+		<include refid="alarmLogTableName"></include>
+		where 1=1
+		and no=#{no}
+	</select>
+	
+	<!-- 根据source和code确认和清除数据库中的告警 -->
+	<update id="confirmOrClearAlarmLogByObject" parameterType="DbAlarmLog">
+		update
+		<include refid="alarmLogTableName"></include>
+		set
+			source=#{source},
+			code = #{code},
+			raised_time=#{raised_time},
+			last_change_time=#{last_change_time},
+			ack_time=#{ack_time},
+			ack_uid=#{ack_uid},
+			cleared_time=#{cleared_time},
+			cleared_uid=#{cleared_uid},
+			addition_pairs=#{addition_pairs}
+		where 1=1
+			and no = #{no}
+	</update>
+	
+	
+</mapper>

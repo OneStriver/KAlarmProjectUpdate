@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="AlarmAttributeMapper">
+
+	<!--表名 -->
+	<sql id="tableName">
+		alarm_attr
+	</sql>
+	
+	<sql id="typeTableName">
+		alarm_type
+	</sql>
+	
+	<sql id="severityTableName">
+		alarm_severity
+	</sql>
+
+	<!-- 字段 -->
+	<sql id="field">
+		deviceType,
+		alarmCode,
+		alarmType,
+		alarm_type.name as alarmTypeName,
+		alarmSeverity,
+		alarm_severity.name as alarmSeverityName,
+		alarmDescription,
+		alarmCause,
+		alarmCause_en,
+		treatment,
+		addition,
+		autoClearEnable,
+		autoClearTimeout,
+		alarmSuppress
+	</sql>
+
+	<!-- 字段值 -->
+	<sql id="fieldValue">
+		#{deviceType},
+		#{alarmCode},
+		#{alarmType},
+		#{alarmSeverity},
+		#{alarmDescription},
+		#{alarmCause},
+		#{alarmCause_en},
+		#{treatment},
+		#{addition},
+		#{autoClearEnable},
+		#{autoClearTimeout},
+		#{alarmSuppress}
+	</sql>
+	
+	<!-- 暂时没有分页的处理 -->
+	<select id="listAlarmAttribute" parameterType="page" resultType="com.fh.entity.alarmAttr.AlarmAttributeEntity">
+		select
+			<include refid="field"></include>
+		from 
+			<include refid="tableName"></include>
+		join
+			<include refid="typeTableName"></include>
+		on
+			alarm_attr.alarmType = alarm_type.id
+		join
+			<include refid="severityTableName"></include>
+		on
+			alarm_attr.alarmSeverity = alarm_severity.id
+	</select>
+	
+	<!-- 新增告警属性信息  -->
+	<insert id="saveAlarmAttribute" parameterType="pageData">
+		insert into
+		<include refid="tableName"></include>
+		values(<include refid="fieldValue"></include>)
+	</insert>
+	
+	<!-- 修改告警属性信息 -->
+	<update id="editAlarmAttribute" parameterType="pageData">
+		update 
+		<include refid="tableName"></include>
+		set 
+			alarmType=#{alarmType},
+			alarmSeverity=#{alarmSeverity},
+			alarmDescription=#{alarmDescription},
+			alarmCause=#{alarmCause},
+			treatment=#{treatment},
+			addition=#{addition},
+			autoClearEnable=#{autoClearEnable},
+			autoClearTimeout=#{autoClearTimeout},
+			alarmSuppress=#{alarmSuppress}
+		where
+			deviceType=#{deviceType},
+			alarmCode=#{alarmCode}
+	</update>
+	
+	<delete id="deleteAlarmAttribute" parameterType="pageData">
+		delete from 
+		<include refid="tableName"></include>
+		where 
+			deviceType=#{deviceType},
+			alarmCode=#{alarmCode}
+	</delete>
+
+</mapper>
