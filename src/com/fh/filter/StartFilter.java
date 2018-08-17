@@ -20,7 +20,6 @@ import com.fh.entity.Page;
 import com.fh.entity.PageData;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
 import com.fh.entity.faultManagement.historyAlarm.DeviceType;
-import com.fh.mqtt.MqttMessageServer;
 import com.fh.service.alarmAttr.AlarmAttributeService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 
@@ -58,8 +57,6 @@ public class StartFilter extends BaseController implements Filter{
         //缓存所有的告警级别
        // String alarmSeverityXmlPath = StartFilter.class.getResource("/alarmXml").getPath();
        // ParseAlarmXmlUtil.getInstance().parseAlarmSeverityXml(alarmSeverityXmlPath+"/AlarmSeverity.xml");
-        //订阅MQTT消息
-        MqttMessageServer.getInstance();
         
 	}
 	

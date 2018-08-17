@@ -1,6 +1,12 @@
 package com.fh.mqtt;
 
+import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import javax.annotation.Resource;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
@@ -8,41 +14,37 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.MqttTopic;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-import com.fh.alarmProcess.mqttMsgProcess.AlarmProcessThread;
+import com.fh.entity.PostedMsg;
 import com.fh.readProperty.PropertyReadUtil;
+import com.fh.service.alarmProcess.MqttMessageProcessService;
 import com.fh.xmlParse.ParseTopicXmlUtil;
 
 /**
  * MQTT消息处理类
  */
+@Component
 public class MqttMessageServer {
 
 	private static Logger logger = LoggerFactory.getLogger(MqttMessageServer.class);
 	private static final String clientId = "KProjectAlarmModule";
-	private MqttClient mqttClient = null;  
-    private int[] allQos;  
-    private String[] allTopics;
+	private static MqttClient mqttClient = null;  
+    private static int[] allQos;  
+    private static String[] allTopics;
     private  MemoryPersistence persistence = new MemoryPersistence();
-    //服务器IP
   	private  String broker = getBroker();
-  	private static final int dbThreadCount = 8;
-  	private AlarmProcessThread[] alarmStoredThread;
-  	private static final int maxRevMsgCount = 65535;
-  	private int dbMsgCount;
-  	
-    {
-    	List<String> topicList = ParseTopicXmlUtil.getInstance().parseTopicXml("/topicFile/rawAlarmTopic.xml");
-    	allTopics = topicList.toArray(new String[topicList.size()]);
-		allQos = new int[allTopics.length];
-		for (int i = 0; i < topicList.size(); i++) {
-			allQos[i] = 2;
-		}
-    }
+  	/*
+  	private static AlarmProcessThread[] alarmStoredThread;
+  	private static final int maxRevMsgCount = 10;
+  	private int dbMsgCount = 0;
+  	*/
+  	private final BlockingQueue<PostedMsg> messageQueue = new LinkedBlockingQueue<PostedMsg>();
+  	@Resource
+	private MqttMessageProcessService mqttMessageProcessService;
     
 	private  String getBroker(){
 		String ip = PropertyReadUtil.getInstance().getOriginalAlarmMqttIp();
@@ -51,28 +53,35 @@ public class MqttMessageServer {
 		return broker;
 	}
 	
-	private volatile static MqttMessageServer mqttMessageServer;
-	private MqttMessageServer(){
+	public MqttMessageServer(){
+		List<String> topicList = ParseTopicXmlUtil.getInstance().parseTopicXml("/topicFile/rawAlarmTopic.xml");
+    	allTopics = topicList.toArray(new String[topicList.size()]);
+		allQos = new int[allTopics.length];
+		for (int i = 0; i < topicList.size(); i++) {
+			allQos[i] = 2;
+		}
+		//启动线程监听消息
+		/*
+		alarmStoredThread = new AlarmProcessThread[maxRevMsgCount];
+		for (int i = 0; i < maxRevMsgCount; i++) {
+			alarmStoredThread[i] = new AlarmProcessThread("ProcessThread"+i);
+			alarmStoredThread[i].startThread();
+		}
+		*/
+		//初始化参数
 		MqttConnectOptions connOpts = new MqttConnectOptions();    
         connOpts.setCleanSession(true);  
         connOpts.setConnectionTimeout(30);  
         connOpts.setKeepAliveInterval(60);
         connOpts.setAutomaticReconnect(true);
-        
         try {
 			mqttClient = new MqttClient(broker, clientId, persistence);
 			mqttClient.setCallback(new MqttCallbackExtended() {
 				@Override
 				public void connectComplete(boolean arg0, String arg1) {
-					
+					//订阅主题
 					subscribeInformation(mqttClient,allTopics, allQos);
 			        logger.info(">>>>>>>>订阅所有主题成功>>>>>>>>");
-			        
-			        alarmStoredThread = new AlarmProcessThread[dbThreadCount];
-					for (int i = 0; i < dbThreadCount; i++) {
-						alarmStoredThread[i] = new AlarmProcessThread("ProcessThread"+i);
-						alarmStoredThread[i].startThread();
-					}
 				}
 				
 				@Override
@@ -83,12 +92,15 @@ public class MqttMessageServer {
 				@Override
 		        public void messageArrived(String topic, MqttMessage mqttMessage) throws Exception {
 					logger.info(">>>>>>>>接收到MQTT推送的消息:" + topic);
-					dbMsgCount++;
-					if (dbMsgCount > maxRevMsgCount) {
+					/*
+					if (dbMsgCount >= maxRevMsgCount) {
 						dbMsgCount = 0;
 					}
-					int i = dbMsgCount % dbThreadCount;
-					alarmStoredThread[i].postThreadMessage(mqttMessage, topic);
+					alarmStoredThread[dbMsgCount].putMqttMessage(mqttMessage, topic);
+					dbMsgCount = dbMsgCount+1;
+					*/
+					PostedMsg postedMsg=new PostedMsg(mqttMessage,topic);
+					messageQueue.offer(postedMsg);
 		        }
 				
 				@Override
@@ -97,26 +109,30 @@ public class MqttMessageServer {
 		        }
 			});
 			mqttClient.connect(connOpts);
-			logger.info(">>>>>>>>连接MQTT服务器成功！！！,连接信息:"+broker);			
+			logger.info(">>>>>>>>连接MQTT服务器成功！！！,连接信息:"+broker);	
+			
+			Executors.newSingleThreadExecutor().execute(new Runnable() {
+				@Override
+				public void run() {
+					while (true) {
+						PostedMsg msg = (PostedMsg) messageQueue.poll();
+						if(msg!=null){
+							MqttMessage mqttMessage = (MqttMessage)msg.getMsg();
+							String strRevMsg = null;
+							try {
+								strRevMsg = new String(mqttMessage.getPayload(), 0, mqttMessage.getPayload().length, "UTF-8");
+							} catch (UnsupportedEncodingException e) {
+								e.printStackTrace();
+							}
+							mqttMessageProcessService.processMqttMsg(msg.getTopic(),strRevMsg);
+						}
+					}
+				}
+			});
+			
 		} catch (MqttException e) {
 			e.printStackTrace();
 		}
-	}
-	public static MqttMessageServer getInstance(){
-		try {
-			if(mqttMessageServer != null){
-				
-			}else{
-				synchronized(MqttMessageServer.class){
-					if(mqttMessageServer == null){
-						mqttMessageServer = new MqttMessageServer();
-					}
-				}
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return mqttMessageServer;
 	}
     
 	private void subscribeInformation(MqttClient mqttClient,String[] allTopics,int[] allQos) {  
@@ -130,16 +146,14 @@ public class MqttMessageServer {
 	/**
 	 * PUSH消息MQTT
 	 */
-	public synchronized void send(String content, int qos, String topic) {
+	public void send(String content, int qos, String topic) {
 		try {
 			MqttMessage message = new MqttMessage(content.getBytes("UTF-8"));
 			message.setQos(qos);
 			message.setRetained(false);
-			MqttTopic mqttTopic =  mqttClient.getTopic(topic);
-			mqttTopic.publish(message.getPayload(), qos, false);
+			mqttClient.publish(topic,message);
 		} catch (Exception e) {
 			e.printStackTrace();
-			System.err.println(e.getLocalizedMessage());
 		}
 	}
 }

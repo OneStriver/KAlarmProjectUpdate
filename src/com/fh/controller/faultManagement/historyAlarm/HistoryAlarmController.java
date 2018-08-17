@@ -3,6 +3,7 @@ package com.fh.controller.faultManagement.historyAlarm;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -22,9 +23,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
-import com.fh.alarmProcess.additionPairsConvert.Addition;
-import com.fh.alarmProcess.additionPairsConvert.Storage;
-import com.fh.alarmProcess.additionPairsConvert.UnitGoods;
 import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.controller.base.BaseController;
 import com.fh.entity.Page;
@@ -65,7 +63,6 @@ public class HistoryAlarmController extends BaseController {
 	private List<DbAlarmLog> exportAlarmLog = new ArrayList<DbAlarmLog>();
 	private List<AlarmAttributeEntity> alarmAttributeList;
 	private AlarmAttributeEntity alarmAttributeEntity;
-	private Gson gson = new Gson();
 	
 	@Resource(name="historyAlarmService")
 	private HistoryAlarmService historyAlarmService;
@@ -167,7 +164,7 @@ public class HistoryAlarmController extends BaseController {
 		pageObject.setPageSize(Math.min(pageSize, (int)alarmLogCount));
 		//条件查询告警日志
 		List<DbAlarmLog> allDbAlarmLog = historyAlarmService.findAllDbAlarmLog(pageObject);
-		
+		Collections.reverse(allDbAlarmLog);
 		//循环处理数据
 		for (DbAlarmLog dbAlarmLog : allDbAlarmLog) {
 			OptionQueryAlarm optionQueryAlarm = new OptionQueryAlarm();
@@ -181,8 +178,6 @@ public class HistoryAlarmController extends BaseController {
 					break;
 				}
 			}
-			//将Json字符串转换成对象
-			Addition fromJsonObject = gson.fromJson(dbAlarmLog.getAdditionPairs(), Addition.class);
 			//告警序号
 			optionQueryAlarm.setAlarmNumber(String.valueOf(dbAlarmLog.getSerialNumber()));
 			//告警等级
@@ -192,68 +187,8 @@ public class HistoryAlarmController extends BaseController {
 			}else{
 				optionQueryAlarm.setAlarmLevel(alarmLevelStr);
 			}
-			List<Storage> historyStorageList = fromJsonObject.getStorageList();
-			for (int i = 0; i < historyStorageList.size(); i++) {
-				UnitGoods unitGoods = historyStorageList.get(i).getUnitGoods();
-				String entryIdStr = "";
-				if(i<(historyStorageList.size()-1)){
-					entryIdStr = entryIdStr + unitGoods.getEntryId()+",";
-				}else{
-					entryIdStr = entryIdStr + unitGoods.getEntryId();
-				}
-				//入库编号
-				optionQueryAlarm.setEntryId(entryIdStr);
-				
-				String belongWhIdStr = "";
-				if(i<(historyStorageList.size()-1)){
-					belongWhIdStr = belongWhIdStr + unitGoods.getBelongWhId()+",";
-				}else{
-					belongWhIdStr = belongWhIdStr + unitGoods.getBelongWhId();
-				}
-				//所属仓库
-				optionQueryAlarm.setBelongWhId(belongWhIdStr);
-				
-				String productIdStr = "";
-				if(i<(historyStorageList.size()-1)){
-					productIdStr = productIdStr + unitGoods.getProductId()+",";
-				}else{
-					productIdStr = productIdStr + unitGoods.getProductId();
-				}
-				//品名
-				optionQueryAlarm.setProductId(productIdStr);
-				
-				String pbNoStr = "";
-				if(i<(historyStorageList.size()-1)){
-					pbNoStr = pbNoStr + unitGoods.getPBNo()+",";
-				}else{
-					pbNoStr = pbNoStr + unitGoods.getPBNo();
-				}
-				//货物编号
-				optionQueryAlarm.setPBNO(pbNoStr);
-				
-				String bundleNoStr = "";
-				if(i<(historyStorageList.size()-1)){
-					bundleNoStr = bundleNoStr + unitGoods.getBundleNo()+",";
-				}else{
-					bundleNoStr = bundleNoStr + unitGoods.getBundleNo();
-				}
-				//捆号
-				optionQueryAlarm.setBundleNo(bundleNoStr);
-				
-				String bleIdStr = "";
-				if(i<(historyStorageList.size()-1)){
-					bleIdStr = bleIdStr + unitGoods.getBleId()+",";
-				}else{
-					bleIdStr = bleIdStr + unitGoods.getBleId();
-				}
-				//蓝牙标签号
-				optionQueryAlarm.setBleId(bleIdStr);
-				
-				//入库时间
-				optionQueryAlarm.setFinishTime(unitGoods.getFinishTime());
-			}
 			//告警详情
-			optionQueryAlarm.setAlarmDetail("");
+			optionQueryAlarm.setAlarmDetail(dbAlarmLog.getAdditionPairs());
 			//告警发生时间
 			optionQueryAlarm.setAlarmHappenTime(dbAlarmLog.getRaisedTime());
 			//告警原因(0表示中文,1表示英文)

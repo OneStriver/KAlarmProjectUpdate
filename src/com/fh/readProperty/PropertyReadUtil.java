@@ -20,8 +20,6 @@ public class PropertyReadUtil {
 
 	private static Properties properties;
 	// 超时时长
-	private String localIp;
-	private Integer localPort;
 	private String originalAlarmMqttIp;
 	private Integer originalAlarmMqttPort;
 	// 项目名称
@@ -48,8 +46,6 @@ public class PropertyReadUtil {
 	 * 初始化属性
 	 */
 	private void getContext() {
-		this.localIp = getProperty("localIp", "127.0.0.1");
-		this.localPort = Integer.valueOf(getProperty("localPort", "0"));
 		this.originalAlarmMqttIp = getProperty("originalAlarmMqttIp", "127.0.0.1");
 		this.originalAlarmMqttPort = Integer.valueOf(getProperty("originalAlarmMqttPort", "1883"));
 		this.projectName = getProperty("projectName", "1510");
@@ -100,22 +96,6 @@ public class PropertyReadUtil {
 		} else {
 			location = path;
 		}
-	}
-
-	public String getLocalIp() {
-		return localIp;
-	}
-
-	public void setLocalIp(String localIp) {
-		this.localIp = localIp;
-	}
-
-	public Integer getLocalPort() {
-		return localPort;
-	}
-
-	public void setLocalPort(Integer localPort) {
-		this.localPort = localPort;
 	}
 
 	public String getOriginalAlarmMqttIp() {

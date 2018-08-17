@@ -14,7 +14,6 @@
 						http://www.springframework.org/schema/tx/spring-tx.xsd
 	">
 	
-	<!-- ====================数据源1==================== -->
 	<!-- sql会话模版 -->
 	<bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
 		<constructor-arg ref="sqlSessionFactory" />

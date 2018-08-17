@@ -1,7 +1,6 @@
 package com.fh.alarmProcess.alarmMsgPojo;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
 import com.fh.util.TimeUtil;
 
@@ -28,10 +27,9 @@ public class AlarmProcessPOJO {
 	private String cleared_time;
 	private String cleared_user;
 	private String addition_pairs;
+	private Map<String,Object> additionMap;
 	private Long updateTime;
 	private String clear;
-
-	private List<KAlarmMqttEntity> kAlarmMqttEntityList = new ArrayList<KAlarmMqttEntity>();
 
 	public AlarmProcessPOJO() {
 		updateTime = TimeUtil.getLongNowTime();
@@ -239,12 +237,12 @@ public class AlarmProcessPOJO {
 		this.alarmType = alarmType;
 	}
 
-	public List<KAlarmMqttEntity> getkAlarmMqttEntityList() {
-		return kAlarmMqttEntityList;
+	public Map<String, Object> getAdditionMap() {
+		return additionMap;
 	}
 
-	public void setkAlarmMqttEntityList(List<KAlarmMqttEntity> kAlarmMqttEntityList) {
-		this.kAlarmMqttEntityList = kAlarmMqttEntityList;
+	public void setAdditionMap(Map<String, Object> additionMap) {
+		this.additionMap = additionMap;
 	}
-
+	
 }

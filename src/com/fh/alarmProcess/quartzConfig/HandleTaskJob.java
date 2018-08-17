@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
-import com.fh.alarmProcess.observerPattern.AlarmObserverStored;
+import com.fh.alarmProcess.mqttMsgProcess.ProcessAlarmProcessMsg;
 import com.fh.util.TimeUtil;
 
 public class HandleTaskJob implements Job {
@@ -30,7 +30,8 @@ public class HandleTaskJob implements Job {
 	    				dataMap.getString("ack_time"), dataMap.getString("ack_user"),
 	    				TimeUtil.getNowTime(), "无(超时)",
 	    				dataMap.getString("addition_pairs"),dataMap.getString("clear"));
-	   AlarmObserverStored.getInstance().processMqttMessage(alarmProcessPOJO);
+	    ProcessAlarmProcessMsg processAlarmProcessMsg = new ProcessAlarmProcessMsg();
+	    processAlarmProcessMsg.processMqttMessage(alarmProcessPOJO);
 	}
 	
 }

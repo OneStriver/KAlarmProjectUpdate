@@ -1,23 +1,42 @@
 package com.fh.alarmProcess.mqttMsgProcess;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import com.fh.messageProcess.HandlerThreadT;
-import com.fh.messageProcess.PostedMsg;
+import com.fh.entity.PostedMsg;
 
 /**
  * 处理接收MQTT告警消息的线程 
  */
-public class AlarmProcessThread extends HandlerThreadT {
+public class AlarmProcessThread implements Runnable {
+	
+	private String name;
+	private Thread thread;
+	private Queue<PostedMsg> messageQueue = new ConcurrentLinkedQueue<PostedMsg>();
 	
 	public AlarmProcessThread(String name) {
-		super(name);
+		this.name = name;
 	}
-
+	
 	@Override
-	public void onThreadMessage(int msgType,Object obj,String topic) {
+	public void run() {
+		while (true) {
+			if (!messageQueue.isEmpty()) {
+				PostedMsg msg = (PostedMsg) messageQueue.poll();
+				onThreadMessage(msg.getType(), msg.getMsg(), msg.getTopic());
+			}
+		}
+	}
+	
+	public void startThread() {
+		thread = new Thread(this, name);
+		thread.start();
+	}
+	
+	private void onThreadMessage(int msgType,Object obj,String topic) {
 		MqttMessage mqttMessage = (MqttMessage)obj;
 		String strRevMsg = null;
 		try {
@@ -32,17 +51,9 @@ public class AlarmProcessThread extends HandlerThreadT {
 		processAlarmProcessMsg.processAlarm(topic,strRevMsg);
 	}
 	
-	public void postThreadMessage(Object msg,String topic){
+	public void putMqttMessage(Object msg,String topic){
 		PostedMsg postedMsg=new PostedMsg(msg,topic);
-		synchronized(lock){
-			try {
-				msgQ.add(postedMsg);
-			} catch (Exception e) {
-				System.out.println("thread  queue  add  exception");
-				e.printStackTrace();
-			}
-			lock.notifyAll();
-		}
+		messageQueue.offer(postedMsg);
 	}
 	
 }
