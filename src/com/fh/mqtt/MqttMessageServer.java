@@ -99,7 +99,7 @@ public class MqttMessageServer {
 					alarmStoredThread[dbMsgCount].putMqttMessage(mqttMessage, topic);
 					dbMsgCount = dbMsgCount+1;
 					*/
-					PostedMsg postedMsg=new PostedMsg(mqttMessage,topic);
+					PostedMsg postedMsg = new PostedMsg(mqttMessage,topic);
 					messageQueue.offer(postedMsg);
 		        }
 				

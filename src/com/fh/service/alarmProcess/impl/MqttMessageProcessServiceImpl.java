@@ -3,6 +3,7 @@ package com.fh.service.alarmProcess.impl;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Resource;
 
@@ -46,6 +47,8 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 	
 	@Resource(name="mqttMessageServer")
 	private MqttMessageServer mqttMessageServer;
+	//缓存每个标签的告警上报次数
+	private static Map<String,Integer> cacheCountMap = new ConcurrentHashMap<String, Integer>();
 
 	//获取设备显示的名称
 	public String getEquipName(String[] splitTopic) {
@@ -61,8 +64,8 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			//告警源
 			String[] splitTopic = topic.split("/");
 			// /raw_alarm/ATCA/9527/board/9527
-			String alarmResourceStr = topic.substring(1+splitTopic[1].length()+1,topic.length());
-			alarmProcessPOJO.setSource(alarmResourceStr);
+			String originalAlarmResource = topic.substring(1+splitTopic[1].length()+1,topic.length());
+			alarmProcessPOJO.setSource(originalAlarmResource);
 			//设备名称
 			alarmProcessPOJO.setEquipName(splitTopic[2]);
 			
@@ -81,10 +84,12 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					alarmOriginalPOJO.setAddition_pairs(value.toString());
 				}
 			}
-			if(alarmOriginalPOJO.getCode() == null || alarmOriginalPOJO.getClear() == null || alarmOriginalPOJO.getAddition_pairs() == null){
+			String originalAlarmCode = alarmOriginalPOJO.getCode();
+			String originalAlarmClear = alarmOriginalPOJO.getClear();
+			String originalAlarmAdditionParirs = alarmOriginalPOJO.getAddition_pairs();
+			if(originalAlarmCode == null || originalAlarmClear == null || originalAlarmAdditionParirs == null){
 				return;
 			}
-			
 			String deviceNameStr = splitTopic[2];
 			//查询数据库的告警的属性信息
 			String additionStr = "";
@@ -92,21 +97,14 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			List<AlarmAttributeEntity> alarmAttributeList = GlobalHashMap.alarmAttributeMap.get("alarmAttributeList");
 			for (int i = 0; i < alarmAttributeList.size(); i++) {
 				AlarmAttributeEntity eachAlarmAttribute = alarmAttributeList.get(i);
-				if((Integer.valueOf(alarmOriginalPOJO.getCode()) == eachAlarmAttribute.getAlarmCode())
+				if((Integer.valueOf(originalAlarmCode) == eachAlarmAttribute.getAlarmCode())
 					&& (deviceNameStr.equals(eachAlarmAttribute.getDeviceType()))){
 					alarmAttributeEntity = eachAlarmAttribute;
 					break;
 				}
 			}
-			//获取项目名称
-			String projectName = PropertyReadUtil.getInstance().getProjectName();
-			if(alarmAttributeEntity!=null){
-				if("1510".equals(projectName)){
-					additionStr = replaceAddition(alarmAttributeEntity,alarmOriginalPOJO);
-				}
-			}
 			//告警码
-			alarmProcessPOJO.setCode(Integer.valueOf(alarmOriginalPOJO.getCode()));
+			alarmProcessPOJO.setCode(Integer.valueOf(originalAlarmCode));
 			//告警类型
 			alarmProcessPOJO.setAlarmType(""+alarmAttributeEntity.getAlarmType());
 			//告警等级
@@ -122,31 +120,42 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			//告警发生时间
 			alarmProcessPOJO.setRaised_time(TimeUtil.getNowTime());
 			//附加信息(原始数据)
-			alarmProcessPOJO.setAddition_pairs(alarmOriginalPOJO.getAddition_pairs());
+			alarmProcessPOJO.setAddition_pairs(originalAlarmAdditionParirs);
 			//上报消息提示是否清除(原始数据)
-			alarmProcessPOJO.setClear(alarmOriginalPOJO.getClear());
-			// 51/1/board/1:2(由source和code两个字段组成)
-			String alarmSingleFlag = topic.substring(1+splitTopic[1].length()+1,topic.length()) + ":" + alarmOriginalPOJO.getCode();
-			//判断原始消息是否需要清除
-			if("1510".equals(projectName)){
-				if ("true".equals(alarmOriginalPOJO.getClear())) {
-					alarmProcessPOJO.setCleared_time(TimeUtil.getNowTime());
-					//设备自动上报告警清除消息
-					alarmProcessPOJO.setCleared_user("无");
-					//缓存中有数据说明上报过该告警(首先清除任务,然后删除缓存)
-					QuartzManager.removeJob(GlobalHashMap.getJobName(alarmSingleFlag),
-							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
-							GlobalHashMap.getTriggerGroupName(alarmSingleFlag));
-				}else if ("false".equals(alarmOriginalPOJO.getClear())) {
-					//缓存中有数据说明上报过该告警
-					QuartzManager.removeJob(GlobalHashMap.getJobName(alarmSingleFlag),
-							GlobalHashMap.getJobGroupName(alarmSingleFlag),
-							GlobalHashMap.getTriggerName(alarmSingleFlag),
-							GlobalHashMap.getTriggerGroupName(alarmSingleFlag));
-					
-					QuartzManager.addJob(GlobalHashMap.getJobName(alarmSingleFlag),
-							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
-							GlobalHashMap.getTriggerGroupName(alarmSingleFlag), HandleTaskJob.class, 30, alarmProcessPOJO);
+			alarmProcessPOJO.setClear(originalAlarmClear);
+			// 51/1/board/1-2(由source和code两个字段组成)
+			String onlySourceCode = originalAlarmResource + "-" + originalAlarmCode;
+			Integer getOnlySourceCodeValue = cacheCountMap.get(onlySourceCode);
+			if(getOnlySourceCodeValue==null){
+				getOnlySourceCodeValue = 1;
+			}
+			Integer alarmTimeOut = PropertyReadUtil.getInstance().getAlarmTimeOut();
+			if ("true".equals(originalAlarmClear)) {
+				alarmProcessPOJO.setCleared_time(TimeUtil.getNowTime());
+				//缓存中有数据说明上报过该告警(首先清除任务,然后删除缓存)
+				QuartzManager.removeJob(GlobalHashMap.getJobName(onlySourceCode),
+						GlobalHashMap.getJobGroupName(onlySourceCode), 
+						GlobalHashMap.getTriggerName(onlySourceCode),
+						GlobalHashMap.getTriggerGroupName(onlySourceCode));
+				cacheCountMap.put(onlySourceCode, 1);
+			}else if ("false".equals(originalAlarmClear)) {
+				QuartzManager.removeJob(GlobalHashMap.getJobName(onlySourceCode),
+						GlobalHashMap.getJobGroupName(onlySourceCode),
+						GlobalHashMap.getTriggerName(onlySourceCode),
+						GlobalHashMap.getTriggerGroupName(onlySourceCode));
+				QuartzManager.addJob(GlobalHashMap.getJobName(onlySourceCode),
+						GlobalHashMap.getJobGroupName(onlySourceCode), 
+						GlobalHashMap.getTriggerName(onlySourceCode),
+						GlobalHashMap.getTriggerGroupName(onlySourceCode), 
+						HandleTaskJob.class, alarmTimeOut, alarmProcessPOJO);
+				cacheCountMap.put(onlySourceCode, getOnlySourceCodeValue+1);
+				if(getOnlySourceCodeValue==1){
+					//不做处理操作
+				}else{
+					if(getOnlySourceCodeValue==5){
+						cacheCountMap.put(onlySourceCode, 1);
+					}
+					return;
 				}
 			}
 			processMqttMessage(alarmProcessPOJO);
@@ -182,8 +191,6 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			}
 			//附加信息
 			writeDbAlarmLog.setAdditionPairs(alarmProcessPOJO.getAddition_pairs());
-			//缓存中间数据的唯一标识
-			String sourceAndCode = alarmProcessPOJO.getSource() + ":" + alarmProcessPOJO.getCode();
 			//查询数据库时候有该条记录
 			pageData.put("alarmSource", alarmProcessPOJO.getSource());
 			pageData.put("alarmCode", alarmProcessPOJO.getCode());
@@ -197,9 +204,6 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 				historyAlarmService.addAlarmLogData(writeDbAlarmLog);
 				long no = writeDbAlarmLog.getSerialNumber();
 				logger.info("第一次上报的告警,写入数据库之后的主键值:"+no);
-				if(no > 0){
-					alarmProcessPOJO.setNo(no);
-				}
 			}else if(dbAlarmLogs.size()!=0){
 				for (DbAlarmLog dbAlarmLogSingle : dbAlarmLogs) {
 					if(dbAlarmLogSingle.getClearTime()!=null && !"".equals(dbAlarmLogSingle.getClearTime())){
@@ -217,9 +221,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					historyAlarmService.addAlarmLogData(writeDbAlarmLog);
 					long no = writeDbAlarmLog.getSerialNumber();
 					logger.info("存在已清除的相同告警,写入数据库之后的主键值:"+no);
-					if(no > 0){
-						alarmProcessPOJO.setNo(no);
-					}
+					
 				}else{
 					if(writeDbAlarmLog.getClearTime()!=null){
 						//这属于清除告警数据
@@ -228,20 +230,14 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 						writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
 						writeDbAlarmLog.setLastChangeTime(writeDbAlarmLog.getClearTime());
 						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
-						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
-						alarmProcessPOJO.setLast_change_time(writeDbAlarmLog.getClearTime());
-						//清除缓存中的数据
-						QuartzManager.removeJob(GlobalHashMap.getJobName(sourceAndCode), GlobalHashMap.getJobGroupName(sourceAndCode), GlobalHashMap.getTriggerName(sourceAndCode), GlobalHashMap.getTriggerGroupName(sourceAndCode));
 					}else{
 						//这是属于重复的告警
-						String nowTime = TimeUtil.getNowTime();
 						logger.info(">>>>>>>>>>这是重复告警的消息");
+						String nowTime = TimeUtil.getNowTime();
 						writeDbAlarmLog.setAdditionPairs(alarmProcessPOJO.getAddition_pairs());
 						writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
 						writeDbAlarmLog.setLastChangeTime(nowTime);
 						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
-						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
-						alarmProcessPOJO.setLast_change_time(nowTime);
 					}
 				}
 			}
@@ -261,28 +257,9 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 		logger.info(">>>>>>>>>>>>>>>>>>>>>>推送的主题:"+sendTopicStr);
 		Map<String,Object> parseObject = JSON.parseObject(alarmProcessPOJO.getAddition_pairs());
 		alarmProcessPOJO.setAdditionMap(parseObject);
-		mqttMessageServer.send(gson.toJson(alarmProcessPOJO), 0,sendTopicStr);
-	}
-	
-	// 1510项目转换方法
-	private String replaceAddition(AlarmAttributeEntity almInfo,AlarmOriginalPOJO originalPOJO) {
-		JSONObject objadd = JSONObject.fromObject(originalPOJO.getAddition_pairs());
-		String addition = null;
-		Iterator<?> itadd = objadd.keys();
-		while (itadd.hasNext()) {
-			Object key = itadd.next();
-			Object value = objadd.get(key);
-			if ("disk".equals(key)) {
-				addition = almInfo.getAddition().replace("{disk}", value.toString());
-			}
-			if ("total".equals(key)) {
-				addition = addition.replace("{total}", value.toString());
-			}
-			if ("used".equals(key)) {
-				addition = addition.replace("{used}", value.toString());
-			}
+		if("false".equals(alarmProcessPOJO.getClear())){
+			mqttMessageServer.send(gson.toJson(alarmProcessPOJO), 0,sendTopicStr);
 		}
-		return addition;
 	}
 	
 	//发送消息给前台提示(WebSocket连接)

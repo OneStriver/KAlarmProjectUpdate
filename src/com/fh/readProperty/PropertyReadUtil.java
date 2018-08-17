@@ -19,12 +19,14 @@ public class PropertyReadUtil {
 	private static String location = PropertyReadUtil.class.getResource("/conf/userDefine.properties").getPath();
 
 	private static Properties properties;
+	
 	// 超时时长
+	private Integer alarmTimeOut;
 	private String originalAlarmMqttIp;
 	private Integer originalAlarmMqttPort;
 	// 项目名称
 	private String projectName;
-
+	
 	/**
 	 * 私有构造器
 	 */
@@ -46,6 +48,7 @@ public class PropertyReadUtil {
 	 * 初始化属性
 	 */
 	private void getContext() {
+		this.alarmTimeOut = Integer.valueOf(getProperty("alarmTimeOut", "5"));
 		this.originalAlarmMqttIp = getProperty("originalAlarmMqttIp", "127.0.0.1");
 		this.originalAlarmMqttPort = Integer.valueOf(getProperty("originalAlarmMqttPort", "1883"));
 		this.projectName = getProperty("projectName", "1510");
@@ -96,6 +99,14 @@ public class PropertyReadUtil {
 		} else {
 			location = path;
 		}
+	}
+	
+	public Integer getAlarmTimeOut() {
+		return alarmTimeOut;
+	}
+
+	public void setAlarmTimeOut(Integer alarmTimeOut) {
+		this.alarmTimeOut = alarmTimeOut;
 	}
 
 	public String getOriginalAlarmMqttIp() {

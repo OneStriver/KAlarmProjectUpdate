@@ -55,7 +55,6 @@ public class QuartzManager {
 	        		.usingJobData("ack_time", alarmProcessPOJO.getAck_time())
 	        		.usingJobData("ack_user", alarmProcessPOJO.getAck_user())
 	        		.usingJobData("cleared_time", TimeUtil.getNowTime())
-	        		.usingJobData("cleared_user", "无")
 	        		.usingJobData("addition_pairs", alarmProcessPOJO.getAddition_pairs())
 	        		.usingJobData("updateTime", alarmProcessPOJO.getUpdateTime())
 	        		.usingJobData("clear", alarmProcessPOJO.getClear())
