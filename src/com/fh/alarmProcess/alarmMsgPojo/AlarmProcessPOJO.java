@@ -244,5 +244,5 @@ public class AlarmProcessPOJO {
 	public void setAdditionMap(Map<String, Object> additionMap) {
 		this.additionMap = additionMap;
 	}
-	
+
 }

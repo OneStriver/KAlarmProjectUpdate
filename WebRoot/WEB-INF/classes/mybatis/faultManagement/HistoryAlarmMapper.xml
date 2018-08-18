@@ -152,6 +152,7 @@
 		<if test="pageData.endDatetime != null and pageData.endDatetime != ''">
 			and alarmLog.raised_time &lt;= #{pageData.endDatetime} 
 		</if>
+		order by alarmLog.lastChangeTime
 		<if test="pageSize!=0">
 			limit #{currentStartIndex},#{pageSize}
 		</if>

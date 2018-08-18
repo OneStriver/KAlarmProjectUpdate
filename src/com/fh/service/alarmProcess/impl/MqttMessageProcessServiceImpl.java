@@ -16,13 +16,10 @@ import com.fh.alarmProcess.alarmMsgPojo.AlarmOriginalPOJO;
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
 import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.alarmProcess.mqttMsgProcess.ProcessAlarmProcessMsg;
-import com.fh.alarmProcess.quartzConfig.HandleTaskJob;
-import com.fh.alarmProcess.quartzConfig.QuartzManager;
 import com.fh.entity.PageData;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
 import com.fh.entity.faultManagement.historyAlarm.DbAlarmLog;
 import com.fh.mqtt.MqttMessageServer;
-import com.fh.readProperty.PropertyReadUtil;
 import com.fh.service.alarmProcess.MqttMessageProcessService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 import com.fh.util.TimeUtil;
@@ -124,11 +121,15 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			//上报消息提示是否清除(原始数据)
 			alarmProcessPOJO.setClear(originalAlarmClear);
 			// 51/1/board/1-2(由source和code两个字段组成)
-			String onlySourceCode = originalAlarmResource + "-" + originalAlarmCode;
+			String onlySourceCode = alarmProcessPOJO.getSource() + "-" + alarmProcessPOJO.getCode();
 			Integer getOnlySourceCodeValue = cacheCountMap.get(onlySourceCode);
 			if(getOnlySourceCodeValue==null){
 				getOnlySourceCodeValue = 1;
+				cacheCountMap.put(onlySourceCode, 1);
+			}else{
+				cacheCountMap.put(onlySourceCode, getOnlySourceCodeValue+1);
 			}
+			/*
 			Integer alarmTimeOut = PropertyReadUtil.getInstance().getAlarmTimeOut();
 			if ("true".equals(originalAlarmClear)) {
 				alarmProcessPOJO.setCleared_time(TimeUtil.getNowTime());
@@ -158,6 +159,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					return;
 				}
 			}
+			*/
 			processMqttMessage(alarmProcessPOJO);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -257,7 +259,9 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 		logger.info(">>>>>>>>>>>>>>>>>>>>>>推送的主题:"+sendTopicStr);
 		Map<String,Object> parseObject = JSON.parseObject(alarmProcessPOJO.getAddition_pairs());
 		alarmProcessPOJO.setAdditionMap(parseObject);
-		if("false".equals(alarmProcessPOJO.getClear())){
+		String onlySourceCode = alarmProcessPOJO.getSource() + "-" + alarmProcessPOJO.getCode();
+		Integer alarmCount = cacheCountMap.get(onlySourceCode);
+		if(alarmCount<=3){
 			mqttMessageServer.send(gson.toJson(alarmProcessPOJO), 0,sendTopicStr);
 		}
 	}

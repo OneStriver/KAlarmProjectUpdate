@@ -53,7 +53,7 @@ public class MqttMessageServer {
 		return broker;
 	}
 	
-	public MqttMessageServer(){
+	public MqttMessageServer() {
 		List<String> topicList = ParseTopicXmlUtil.getInstance().parseTopicXml("/topicFile/rawAlarmTopic.xml");
     	allTopics = topicList.toArray(new String[topicList.size()]);
 		allQos = new int[allTopics.length];
@@ -115,21 +115,24 @@ public class MqttMessageServer {
 				@Override
 				public void run() {
 					while (true) {
-						PostedMsg msg = (PostedMsg) messageQueue.poll();
-						if(msg!=null){
-							MqttMessage mqttMessage = (MqttMessage)msg.getMsg();
-							String strRevMsg = null;
-							try {
-								strRevMsg = new String(mqttMessage.getPayload(), 0, mqttMessage.getPayload().length, "UTF-8");
-							} catch (UnsupportedEncodingException e) {
-								e.printStackTrace();
+						try {
+							PostedMsg msg = (PostedMsg) messageQueue.take();
+							if (msg != null) {
+								MqttMessage mqttMessage = (MqttMessage) msg.getMsg();
+								String strRevMsg = null;
+								try {
+									strRevMsg = new String(mqttMessage.getPayload(), 0, mqttMessage.getPayload().length,"UTF-8");
+								} catch (UnsupportedEncodingException e) {
+									e.printStackTrace();
+								}
+								mqttMessageProcessService.processMqttMsg(msg.getTopic(), strRevMsg);
 							}
-							mqttMessageProcessService.processMqttMsg(msg.getTopic(),strRevMsg);
+						} catch (Exception e) {
+							e.printStackTrace();
 						}
 					}
 				}
 			});
-			
 		} catch (MqttException e) {
 			e.printStackTrace();
 		}
@@ -151,7 +154,7 @@ public class MqttMessageServer {
 			MqttMessage message = new MqttMessage(content.getBytes("UTF-8"));
 			message.setQos(qos);
 			message.setRetained(false);
-			mqttClient.publish(topic,message);
+			mqttClient.publish(topic, message);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

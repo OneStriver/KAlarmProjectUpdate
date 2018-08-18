@@ -164,7 +164,6 @@ public class HistoryAlarmController extends BaseController {
 		pageObject.setPageSize(Math.min(pageSize, (int)alarmLogCount));
 		//条件查询告警日志
 		List<DbAlarmLog> allDbAlarmLog = historyAlarmService.findAllDbAlarmLog(pageObject);
-		Collections.reverse(allDbAlarmLog);
 		//循环处理数据
 		for (DbAlarmLog dbAlarmLog : allDbAlarmLog) {
 			OptionQueryAlarm optionQueryAlarm = new OptionQueryAlarm();
