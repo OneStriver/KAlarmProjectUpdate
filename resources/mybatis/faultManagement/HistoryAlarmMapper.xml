@@ -223,7 +223,7 @@
 		)
 	</insert>
 	
-	<!-- 根据source和code更新数据库中的告警 -->
+	<!-- 根据source和code更新数据库中的告警 不能用source和code 因为数据库中会有相同的记录 -->
 	<update id="updateHistoryAlarmLogByObject" parameterType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
 		update
 		<include refid="alarmLogTableName"></include>

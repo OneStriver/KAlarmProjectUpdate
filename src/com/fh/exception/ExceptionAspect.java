@@ -2,8 +2,7 @@ package com.fh.exception;
 
 import javax.xml.bind.ValidationException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -22,7 +21,7 @@ import com.fh.entity.ResultBean;
 @ControllerAdvice
 @ResponseBody
 public class ExceptionAspect {
-    private static final Logger log = LoggerFactory.getLogger(ExceptionAspect.class);
+    private static final Logger log = Logger.getLogger(ExceptionAspect.class);
     /**
      * 400 - Bad Request
      */

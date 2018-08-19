@@ -8,6 +8,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.annotation.Resource;
 
+import org.apache.log4j.Logger;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -15,8 +16,6 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.fh.entity.PostedMsg;
@@ -30,7 +29,7 @@ import com.fh.xmlParse.ParseTopicXmlUtil;
 @Component
 public class MqttMessageServer {
 
-	private static Logger logger = LoggerFactory.getLogger(MqttMessageServer.class);
+	private static Logger logger = Logger.getLogger(MqttMessageServer.class);
 	private static final String clientId = "KProjectAlarmModule";
 	private static MqttClient mqttClient = null;  
     private static int[] allQos;  

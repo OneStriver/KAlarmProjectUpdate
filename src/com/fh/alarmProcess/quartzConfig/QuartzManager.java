@@ -3,6 +3,7 @@ package com.fh.alarmProcess.quartzConfig;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.apache.log4j.Logger;
 import org.quartz.DateBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -13,8 +14,6 @@ import org.quartz.SimpleTrigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
 import com.fh.util.TimeUtil;
@@ -24,7 +23,7 @@ import com.fh.util.TimeUtil;
  */
 public class QuartzManager {
 
-	private static Logger logger = LoggerFactory.getLogger(QuartzManager.class);
+	private static Logger logger = Logger.getLogger(QuartzManager.class);
 	private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private static SchedulerFactory schedulerFactory = new StdSchedulerFactory();
 

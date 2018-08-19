@@ -13,6 +13,7 @@ public class AlarmAttributeEntity {
 	private String alarmCause_en;
 	private String treatment;
 	private String addition;
+	private int limitStrategy;
 	private int autoClearEnable;
 	private int autoClearTimeout;
 	private int alarmSuppress;
@@ -107,6 +108,14 @@ public class AlarmAttributeEntity {
 
 	public void setAddition(String addition) {
 		this.addition = addition;
+	}
+	
+	public int getLimitStrategy() {
+		return limitStrategy;
+	}
+
+	public void setLimitStrategy(int limitStrategy) {
+		this.limitStrategy = limitStrategy;
 	}
 
 	public int getAutoClearEnable() {

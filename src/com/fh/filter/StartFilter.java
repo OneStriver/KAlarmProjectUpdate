@@ -17,9 +17,7 @@ import org.springframework.web.context.support.WebApplicationContextUtils;
 import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.controller.base.BaseController;
 import com.fh.entity.Page;
-import com.fh.entity.PageData;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
-import com.fh.entity.faultManagement.historyAlarm.DeviceType;
 import com.fh.service.alarmAttr.AlarmAttributeService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 
@@ -38,14 +36,10 @@ public class StartFilter extends BaseController implements Filter{
     	historyAlarmService = (HistoryAlarmService)ctx.getBean("historyAlarmService");
     	alarmAttributeService = (AlarmAttributeService)ctx.getBean("alarmAttributeService");
     	Page page = new Page();
-    	PageData pd =new PageData();
-		//缓存数据库中的设备类型信息
         try {
-        	List<DeviceType> allDeviceType = historyAlarmService.findAllDeviceType(pd);
-        	for (DeviceType deviceType : allDeviceType) {
-        		GlobalHashMap.equipNameSourceCodeInfoMap.put(deviceType.getEquipResource()+"-"+deviceType.getEquipId(), deviceType.getDeviceName());
-        	}
+        	//缓存service实例
         	GlobalHashMap.historyAlarmServiceMap.put("historyAlarmServiceInstance", historyAlarmService);
+        	//缓存所有告警属性值
         	List<AlarmAttributeEntity> alarmAttributeList = alarmAttributeService.list(page);
         	GlobalHashMap.alarmAttributeMap.put("alarmAttributeList", alarmAttributeList);
         } catch (Exception e) {

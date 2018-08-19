@@ -29,6 +29,7 @@
 		alarmCause_en,
 		treatment,
 		addition,
+		limitStrategy,
 		autoClearEnable,
 		autoClearTimeout,
 		alarmSuppress
@@ -45,6 +46,7 @@
 		#{alarmCause_en},
 		#{treatment},
 		#{addition},
+		#{limitStrategy},
 		#{autoClearEnable},
 		#{autoClearTimeout},
 		#{alarmSuppress}
@@ -84,6 +86,7 @@
 			alarmCause=#{alarmCause},
 			treatment=#{treatment},
 			addition=#{addition},
+			limitStrategy=#{limitStrategy},
 			autoClearEnable=#{autoClearEnable},
 			autoClearTimeout=#{autoClearTimeout},
 			alarmSuppress=#{alarmSuppress}

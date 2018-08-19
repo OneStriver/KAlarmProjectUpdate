@@ -4,15 +4,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 
 /**
  * 用于读取配置文件上的配置信息并初始化对应属性
  */
 public class PropertyReadUtil {
 	// 获取log对象
-	private static final Logger log = LoggerFactory.getLogger(PropertyReadUtil.class);
+	private static final Logger log = Logger.getLogger(PropertyReadUtil.class);
 
 	private static PropertyReadUtil context;
 	// 配置文件路径
@@ -20,8 +19,8 @@ public class PropertyReadUtil {
 
 	private static Properties properties;
 	
-	// 超时时长
-	private Integer alarmTimeOut;
+	// 合并告警次数
+	private Integer mergeAlarmTimes;
 	private String originalAlarmMqttIp;
 	private Integer originalAlarmMqttPort;
 	// 项目名称
@@ -48,7 +47,7 @@ public class PropertyReadUtil {
 	 * 初始化属性
 	 */
 	private void getContext() {
-		this.alarmTimeOut = Integer.valueOf(getProperty("alarmTimeOut", "5"));
+		this.mergeAlarmTimes = Integer.valueOf(getProperty("mergeAlarmTimes", "5"));
 		this.originalAlarmMqttIp = getProperty("originalAlarmMqttIp", "127.0.0.1");
 		this.originalAlarmMqttPort = Integer.valueOf(getProperty("originalAlarmMqttPort", "1883"));
 		this.projectName = getProperty("projectName", "1510");
@@ -101,12 +100,12 @@ public class PropertyReadUtil {
 		}
 	}
 	
-	public Integer getAlarmTimeOut() {
-		return alarmTimeOut;
+	public Integer getMergeAlarmTimes() {
+		return mergeAlarmTimes;
 	}
 
-	public void setAlarmTimeOut(Integer alarmTimeOut) {
-		this.alarmTimeOut = alarmTimeOut;
+	public void setMergeAlarmTimes(Integer mergeAlarmTimes) {
+		this.mergeAlarmTimes = mergeAlarmTimes;
 	}
 
 	public String getOriginalAlarmMqttIp() {

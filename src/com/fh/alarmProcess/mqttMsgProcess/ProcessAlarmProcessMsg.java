@@ -3,8 +3,7 @@ package com.fh.alarmProcess.mqttMsgProcess;
 import java.util.Iterator;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.Logger;
 
 import com.fh.alarmProcess.alarmMsgPojo.AlarmOriginalPOJO;
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
@@ -25,7 +24,7 @@ import net.sf.json.JSONObject;
  */
 public class ProcessAlarmProcessMsg {
 
-	private static Logger logger = LoggerFactory.getLogger(ProcessAlarmProcessMsg.class);
+	private static Logger logger = Logger.getLogger(ProcessAlarmProcessMsg.class);
 	private AlarmOriginalPOJO alarmOriginalPOJO;
 	private AlarmProcessPOJO alarmProcessPOJO;
 	private AlarmAttributeEntity alarmAttributeEntity;
@@ -36,12 +35,6 @@ public class ProcessAlarmProcessMsg {
 		
 	}
 
-	//获取设备显示的名称
-	public String getEquipName(String[] splitTopic) {
-		String displayName = GlobalHashMap.equipNameSourceCodeInfoMap.get(splitTopic[2] + "-" + splitTopic[3]);
-		return displayName + "-" + splitTopic[3];
-	}
-	
 	/**
 	 * 处理MQTT接收消息的方法
 	 */

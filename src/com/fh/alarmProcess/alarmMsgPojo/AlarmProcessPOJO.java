@@ -100,7 +100,7 @@ public class AlarmProcessPOJO {
 	public void setCode(int code) {
 		this.code = code;
 	}
-
+	
 	public String getSeverity() {
 		return severity;
 	}

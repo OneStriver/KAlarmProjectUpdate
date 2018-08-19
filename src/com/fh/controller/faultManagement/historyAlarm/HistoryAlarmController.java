@@ -3,7 +3,6 @@ package com.fh.controller.faultManagement.historyAlarm;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -73,13 +72,8 @@ public class HistoryAlarmController extends BaseController {
 	
 	@PostConstruct
 	public void cacheAlarmAttribute() throws Exception {
-		Page page = new Page();
-		alarmAttributeList = alarmAttributeService.list(page);
-    }
-	
-	@PostConstruct
-	public void cacheUser() {
 		cacheUserMap.clear();
+		alarmAttributeList = GlobalHashMap.alarmAttributeMap.get("alarmAttributeList");
     }
 	
 	/**
