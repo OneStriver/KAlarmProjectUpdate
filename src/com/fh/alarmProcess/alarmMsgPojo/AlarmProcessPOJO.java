@@ -13,7 +13,10 @@ public class AlarmProcessPOJO {
 	private String source;
 	private String equipName;
 	private Integer code;
+	private String alarmSingleFlag;
+	//告警类型
 	private String alarmType;
+	//告警等级
 	private String severity;
 	private String desc;
 	private String cause;
@@ -35,13 +38,14 @@ public class AlarmProcessPOJO {
 		updateTime = TimeUtil.getLongNowTime();
 	}
 
-	public AlarmProcessPOJO(String source, String equipName, Integer code, String alarmType, String severity,
+	public AlarmProcessPOJO(String source, String equipName, Integer code,String alarmSingleFlag, String alarmType, String severity,
 			String desc, String cause, String treatment, String addition, String target, String raised_time,
 			String last_change_time, String ack_time, String ack_user, String cleared_time, String cleared_user,
 			String addition_pairs, String clear) {
 		this.source = source;
 		this.equipName = equipName;
 		this.code = code;
+		this.alarmSingleFlag = alarmSingleFlag;
 		this.alarmType = alarmType;
 		this.severity = severity;
 		this.desc = desc;
@@ -101,6 +105,14 @@ public class AlarmProcessPOJO {
 		this.code = code;
 	}
 	
+	public String getAlarmSingleFlag() {
+		return alarmSingleFlag;
+	}
+
+	public void setAlarmSingleFlag(String alarmSingleFlag) {
+		this.alarmSingleFlag = alarmSingleFlag;
+	}
+
 	public String getSeverity() {
 		return severity;
 	}

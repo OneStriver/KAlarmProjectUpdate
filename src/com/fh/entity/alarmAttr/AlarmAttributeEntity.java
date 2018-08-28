@@ -5,9 +5,7 @@ public class AlarmAttributeEntity {
 	private String deviceType;
 	private int alarmCode;
 	private int alarmType;
-	private String alarmTypeName;
 	private int alarmSeverity;
-	private String alarmSeverityName;
 	private String alarmDescription;
 	private String alarmCause;
 	private String alarmCause_en;
@@ -17,6 +15,9 @@ public class AlarmAttributeEntity {
 	private int autoClearEnable;
 	private int autoClearTimeout;
 	private int alarmSuppress;
+	
+	private AlarmServerityEntity alarmServerityEntity;
+	private AlarmTypeEntity alarmTypeEntity;
 
 	public AlarmAttributeEntity() {
 		super();
@@ -46,28 +47,12 @@ public class AlarmAttributeEntity {
 		this.alarmType = alarmType;
 	}
 
-	public String getAlarmTypeName() {
-		return alarmTypeName;
-	}
-
-	public void setAlarmTypeName(String alarmTypeName) {
-		this.alarmTypeName = alarmTypeName;
-	}
-
 	public int getAlarmSeverity() {
 		return alarmSeverity;
 	}
 
 	public void setAlarmSeverity(int alarmSeverity) {
 		this.alarmSeverity = alarmSeverity;
-	}
-
-	public String getAlarmSeverityName() {
-		return alarmSeverityName;
-	}
-
-	public void setAlarmSeverityName(String alarmSeverityName) {
-		this.alarmSeverityName = alarmSeverityName;
 	}
 
 	public String getAlarmDescription() {
@@ -141,5 +126,21 @@ public class AlarmAttributeEntity {
 	public void setAlarmSuppress(int alarmSuppress) {
 		this.alarmSuppress = alarmSuppress;
 	}
+	
+	public AlarmServerityEntity getAlarmServerityEntity() {
+		return alarmServerityEntity;
+	}
 
+	public void setAlarmServerityEntity(AlarmServerityEntity alarmServerityEntity) {
+		this.alarmServerityEntity = alarmServerityEntity;
+	}
+
+	public AlarmTypeEntity getAlarmTypeEntity() {
+		return alarmTypeEntity;
+	}
+
+	public void setAlarmTypeEntity(AlarmTypeEntity alarmTypeEntity) {
+		this.alarmTypeEntity = alarmTypeEntity;
+	}
+	
 }

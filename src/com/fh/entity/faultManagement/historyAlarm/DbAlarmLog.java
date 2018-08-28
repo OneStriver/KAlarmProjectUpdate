@@ -9,6 +9,7 @@ public class DbAlarmLog {
 	private String lastChangeTime;
 	private String ackTime;
 	private String ackUserName;
+	private Integer clearFlag;
 	private String clearTime;
 	private String clearUserName;
 	private String additionPairs;
@@ -72,6 +73,14 @@ public class DbAlarmLog {
 
 	public void setAckUserName(String ackUserName) {
 		this.ackUserName = ackUserName;
+	}
+	
+	public Integer getClearFlag() {
+		return clearFlag;
+	}
+
+	public void setClearFlag(Integer clearFlag) {
+		this.clearFlag = clearFlag;
 	}
 
 	public String getClearTime() {

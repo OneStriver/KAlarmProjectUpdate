@@ -3,9 +3,9 @@ package com.fh.entity.faultManagement.realTimeAlarm;
 public class ConfirmClearAlarmEntity {
 
 	private int alarmType;
+	private String serialNumber;
 	private String alarmSource;
 	private int alarmCode;
-	private String serialNumber;
 	private String alarmAckTime;
 	private String alarmAckPerson;
 	private String alarmClearTime;

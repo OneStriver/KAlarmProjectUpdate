@@ -20,6 +20,7 @@ import com.fh.entity.PageData;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
 import com.fh.entity.faultManagement.historyAlarm.DbAlarmLog;
 import com.fh.mqtt.MqttMessageServer;
+import com.fh.readProperty.PropertyReadUtil;
 import com.fh.service.alarmProcess.MqttMessageProcessService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 import com.fh.util.TimeUtil;
@@ -76,7 +77,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			String originalAlarmCode = alarmOriginalPOJO.getCode();
 			String originalAlarmClear = alarmOriginalPOJO.getClear();
 			String originalAlarmAdditionParirs = alarmOriginalPOJO.getAddition_pairs();
-			if(originalAlarmCode == null || originalAlarmClear == null || originalAlarmAdditionParirs == null){
+			if(originalAlarmCode == null || originalAlarmClear == null){
 				return;
 			}
 			String deviceNameStr = splitTopic[2];
@@ -91,12 +92,15 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					break;
 				}
 			}
+			if(alarmAttributeEntity==null){
+				return;
+			}
 			//告警码
 			alarmProcessPOJO.setCode(Integer.valueOf(originalAlarmCode));
 			//告警类型
-			alarmProcessPOJO.setAlarmType(""+alarmAttributeEntity.getAlarmType());
+			alarmProcessPOJO.setAlarmType(""+alarmAttributeEntity.getAlarmTypeEntity().getAlarmTypeName());
 			//告警等级
-			alarmProcessPOJO.setSeverity(""+alarmAttributeEntity.getAlarmSeverity());
+			alarmProcessPOJO.setSeverity(""+alarmAttributeEntity.getAlarmServerityEntity().getAlarmServerityName());
 			//告警描述
 			alarmProcessPOJO.setDesc(alarmAttributeEntity.getAlarmDescription());
 			//告警原因
@@ -113,6 +117,25 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			alarmProcessPOJO.setClear(originalAlarmClear);
 			// 51/1/board/1-2(由source和code两个字段组成)
 			String alarmSingleFlag = topic.substring(1+splitTopic[1].length()+1,topic.length()) + ":" + alarmOriginalPOJO.getCode();
+			//缓存标志位
+			alarmProcessPOJO.setAlarmSingleFlag(alarmSingleFlag);
+			
+			//相同告警累计多少次进行处理(告警清除不需要)
+			int limitStrategy = alarmAttributeEntity.getLimitStrategy();
+			Integer startCountSourceCodeValue = GlobalHashMap.cacheAlarmCountMap.get(alarmSingleFlag);
+			if(limitStrategy==1){
+				if ("false".equals(originalAlarmClear)) {
+					if (startCountSourceCodeValue == null) {
+						startCountSourceCodeValue = 0;
+						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, startCountSourceCodeValue + 1);
+					} else {
+						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, startCountSourceCodeValue + 1);
+					}
+				}
+			}
+			
+			//告警合并的次数
+			Integer mergeAlarmCount = PropertyReadUtil.getInstance().getMergeAlarmCount();
 			
 			// 1表示开启自动清除 	0表示没有开启自动清除
 			int autoClearEnable = alarmAttributeEntity.getAutoClearEnable();
@@ -125,6 +148,9 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
 							GlobalHashMap.getTriggerGroupName(alarmSingleFlag));
 				}
+				if(limitStrategy==1){
+					GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, 0);
+				}
 			}else if ("false".equals(originalAlarmClear)) {
 				if(autoClearEnable==1){
 					//缓存中有数据说明上报过该告警
@@ -136,17 +162,28 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
 							GlobalHashMap.getTriggerGroupName(alarmSingleFlag), HandleTaskJob.class, autoClearTimeout, alarmProcessPOJO);
 				}
+				if (limitStrategy == 1) {
+					Integer countSourceCodeValue = GlobalHashMap.cacheAlarmCountMap.get(alarmSingleFlag);
+					if (countSourceCodeValue == 1) {
+						// 不做处理操作
+					} else {
+						if (countSourceCodeValue == mergeAlarmCount) {
+							GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, 0);
+						}
+						return;
+					}
+				}
 			}
-			//处理mqtt接收到的消息
+			//处理MQTT接收到的消息
 			processMqttMessage(alarmProcessPOJO);
-			// 发送消息到MQTT
-			sendMsgToMqtt(alarmProcessPOJO);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	private void processMqttMessage(AlarmProcessPOJO alarmProcessPOJO) {
+		//告警清除
+		String alarmSingleFlag = alarmProcessPOJO.getAlarmSingleFlag();
 		//每次将对象置为null
 		cacheDbAlarmLog = null;
 		try {
@@ -161,6 +198,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			writeDbAlarmLog.setRaisedTime(alarmProcessPOJO.getRaised_time());
 			//是否是清除消息
 			String clearFlag = alarmProcessPOJO.getClear();
+			logger.info(">>>>>>>>>>>上报消息是否是清除告警:"+clearFlag);
 			if("true".equals(clearFlag)){
 				alarmProcessPOJO.setCleared_time(TimeUtil.getNowTime());
 				//清除时间
@@ -179,10 +217,13 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 				//没有上报过告警直接上报告警清除,不处理
 				return;
 			}else if(dbAlarmLogs.size()==0 && writeDbAlarmLog.getClearTime()==null){
+				//第一次告警发生时间和最后更新时间一样
+				writeDbAlarmLog.setLastChangeTime(writeDbAlarmLog.getRaisedTime());
 				//这是第一次上报的告警 写入数据库
 				historyAlarmService.addAlarmLogData(writeDbAlarmLog);
-				long no = writeDbAlarmLog.getSerialNumber();
-				logger.info("第一次上报的告警,写入数据库之后的主键值:"+no);
+				long serialNumber = writeDbAlarmLog.getSerialNumber();
+				alarmProcessPOJO.setNo(serialNumber);
+				logger.info("第一次上报的告警,写入数据库之后的主键值:"+serialNumber);
 			}else if(dbAlarmLogs.size()!=0){
 				//查询出数据库中没有清除的告警
 				for (DbAlarmLog dbAlarmLogSingle : dbAlarmLogs) {
@@ -197,27 +238,41 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					if(writeDbAlarmLog.getClearTime()!=null){
 						return;
 					}
+					//第一次告警发生时间和最后更新时间一样
+					writeDbAlarmLog.setLastChangeTime(writeDbAlarmLog.getRaisedTime());
 					//说明同样的告警已经清除了,这相当于是新的一次告警
 					historyAlarmService.addAlarmLogData(writeDbAlarmLog);
-					long no = writeDbAlarmLog.getSerialNumber();
-					logger.info("存在已清除的相同告警,写入数据库之后的主键值:"+no);
+					long serialNumber = writeDbAlarmLog.getSerialNumber();
+					alarmProcessPOJO.setNo(serialNumber);
+					logger.info("存在已清除的相同告警,写入数据库之后的主键值:"+serialNumber);
 				}else{
 					if(writeDbAlarmLog.getClearTime()!=null){
 						//这属于清除告警数据
-						logger.info(">>>>>>>>>>这是清除告警的消息");
+						logger.info(">>>>>>>>>>这是设备上报清除告警的消息");
+						if("true".equals(clearFlag)){
+							writeDbAlarmLog.setClearFlag(1);
+						}
 						writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
-						writeDbAlarmLog.setLastChangeTime(writeDbAlarmLog.getClearTime());
 						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
+						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
+						//清除缓存中的计数
+						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag,0);
 					}else{
 						//这是属于重复的告警
 						logger.info(">>>>>>>>>>这是重复告警的消息");
 						String nowTime = TimeUtil.getNowTime();
+						if("false".equals(clearFlag)){
+							writeDbAlarmLog.setClearFlag(0);
+						}
 						writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
 						writeDbAlarmLog.setLastChangeTime(nowTime);
 						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
+						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
 					}
 				}
 			}
+			// 发送消息到MQTT
+			sendMsgToMqtt(alarmProcessPOJO);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -225,14 +280,14 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 	
 	// 发送消息到MQTT
 	private void sendMsgToMqtt(AlarmProcessPOJO alarmProcessPOJO) {
-		String sendTopicStr = "/alarm/"+alarmProcessPOJO.getEquipName();
-		sendTopicStr = sendTopicStr+
-				"/"+alarmProcessPOJO.getCode()+
-				"/"+alarmProcessPOJO.getSource();
+		String sendTopicStr = "/alarm/"+alarmProcessPOJO.getSeverity()+"/"+alarmProcessPOJO.getAlarmType()+"/"+alarmProcessPOJO.getSource();
 		logger.info(">>>>>>>>>>>>>>>>>>>>>>推送的主题:"+sendTopicStr);
+		//转换addition_pairs之后的数据
 		Map<String,Object> parseObject = JSON.parseObject(alarmProcessPOJO.getAddition_pairs());
 		alarmProcessPOJO.setAdditionMap(parseObject);
-		mqttMessageServer.send(gson.toJson(alarmProcessPOJO), 0,sendTopicStr);
+		String sendToMqttStr = gson.toJson(alarmProcessPOJO);
+		logger.info(">>>>>>>>>>>>>>>>发送MQTT的数据:"+sendToMqttStr);
+		mqttMessageServer.send(sendToMqttStr, 0,sendTopicStr);
 	}
 	
 	//发送消息给前台提示(WebSocket连接)

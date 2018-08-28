@@ -50,6 +50,11 @@ public interface HistoryAlarmService{
 	public List<DbAlarmLog> findAllDbAlarmLog(Page page)throws Exception;
 	
 	/**
+	 * 查询告警日志记录
+	 */
+	public List<DbAlarmLog> appOptionFindAlarmLog(String serialNumber)throws Exception;
+	
+	/**
 	 * 查询所有的日志条数
 	 */
 	public PageData findAllDbAlarmLogCount(PageData pd)throws Exception;

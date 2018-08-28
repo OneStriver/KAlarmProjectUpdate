@@ -3,6 +3,28 @@
 	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="AlarmAttributeMapper">
 
+	<resultMap id="alarmAttributeEntityMap" type="com.fh.entity.alarmAttr.AlarmAttributeEntity">
+		<result property="deviceType" column="deviceType" />
+		<result property="alarmCode" column="alarmCode" />
+		<result property="alarmType" column="alarmType" />
+		<result property="alarmSeverity" column="alarmSeverity" />
+		<result property="alarmDescription" column="alarmDescription" />
+		<result property="alarmCause" column="alarmCause" />
+		<result property="alarmCause_en" column="alarmCause_en" />
+		<result property="treatment" column="treatment" />
+		<result property="addition" column="addition" />
+		<result property="limitStrategy" column="limitStrategy" />
+		<result property="autoClearEnable" column="autoClearEnable" />
+		<result property="autoClearTimeout" column="autoClearTimeout" />
+		<result property="alarmSuppress" column="alarmSuppress" />
+		<association property="alarmServerityEntity" javaType="com.fh.entity.alarmAttr.AlarmServerityEntity">
+			<result property="alarmServerityName" column="alarmServerityName" />								
+		</association>
+		<association property="alarmTypeEntity" javaType="com.fh.entity.alarmAttr.AlarmTypeEntity">
+			<result property="alarmTypeName" column="alarmTypeName" />								
+		</association>
+	</resultMap>
+
 	<!--表名 -->
 	<sql id="tableName">
 		alarm_attr
@@ -18,21 +40,21 @@
 
 	<!-- 字段 -->
 	<sql id="field">
-		deviceType,
-		alarmCode,
-		alarmType,
+		alarm_attr.deviceType,
+		alarm_attr.alarmCode,
+		alarm_attr.alarmType,
+		alarm_attr.alarmSeverity,
+		alarm_attr.alarmDescription,
+		alarm_attr.alarmCause,
+		alarm_attr.alarmCause_en,
+		alarm_attr.treatment,
+		alarm_attr.addition,
+		alarm_attr.limitStrategy,
+		alarm_attr.autoClearEnable,
+		alarm_attr.autoClearTimeout,
+		alarm_attr.alarmSuppress,
 		alarm_type.name as alarmTypeName,
-		alarmSeverity,
-		alarm_severity.name as alarmSeverityName,
-		alarmDescription,
-		alarmCause,
-		alarmCause_en,
-		treatment,
-		addition,
-		limitStrategy,
-		autoClearEnable,
-		autoClearTimeout,
-		alarmSuppress
+		alarm_severity.name as alarmServerityName
 	</sql>
 
 	<!-- 字段值 -->
@@ -53,7 +75,7 @@
 	</sql>
 	
 	<!-- 暂时没有分页的处理 -->
-	<select id="listAlarmAttribute" parameterType="page" resultType="com.fh.entity.alarmAttr.AlarmAttributeEntity">
+	<select id="listAlarmAttribute" parameterType="page" resultMap="alarmAttributeEntityMap">
 		select
 			<include refid="field"></include>
 		from 

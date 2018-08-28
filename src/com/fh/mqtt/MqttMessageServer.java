@@ -18,6 +18,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.springframework.stereotype.Component;
 
+import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.entity.PostedMsg;
 import com.fh.readProperty.PropertyReadUtil;
 import com.fh.service.alarmProcess.MqttMessageProcessService;
@@ -30,7 +31,7 @@ import com.fh.xmlParse.ParseTopicXmlUtil;
 public class MqttMessageServer {
 
 	private static Logger logger = Logger.getLogger(MqttMessageServer.class);
-	private static final String clientId = "KProjectAlarmModule";
+	private static final String clientId = "KProjectAlarmModule123456";
 	private static MqttClient mqttClient = null;  
     private static int[] allQos;  
     private static String[] allTopics;
@@ -91,6 +92,8 @@ public class MqttMessageServer {
 				@Override
 		        public void messageArrived(String topic, MqttMessage mqttMessage) throws Exception {
 					logger.info(">>>>>>>>接收到MQTT推送的消息:" + topic);
+					logger.info(">>>>>>>>接收到MQTT推送的消息内容:" + new String(mqttMessage.getPayload(), 0, mqttMessage.getPayload().length,"UTF-8"));
+					
 					/*
 					if (dbMsgCount >= maxRevMsgCount) {
 						dbMsgCount = 0;
@@ -132,6 +135,8 @@ public class MqttMessageServer {
 					}
 				}
 			});
+			//缓存MqttClient实例在Map中
+			GlobalHashMap.mqttClientMap.put("mqttClient", mqttClient);
 		} catch (MqttException e) {
 			e.printStackTrace();
 		}

@@ -39,6 +39,7 @@ public class QuartzManager {
 			Scheduler scheduler = schedulerFactory.getScheduler();
 			// 创建一个JobDetail实例,并指定Job在Scheduler中所属组及名称
 			JobDetail middleJobDetail = JobBuilder.newJob(jobClass).withIdentity(jobName,jobGroupName)
+					.usingJobData("no", String.valueOf(alarmProcessPOJO.getNo()))
 	        		.usingJobData("source", alarmProcessPOJO.getSource())
 	        		.usingJobData("equipName", alarmProcessPOJO.getEquipName())
 	        		.usingJobData("code", alarmProcessPOJO.getCode())
@@ -57,6 +58,7 @@ public class QuartzManager {
 	        		.usingJobData("addition_pairs", alarmProcessPOJO.getAddition_pairs())
 	        		.usingJobData("updateTime", alarmProcessPOJO.getUpdateTime())
 	        		.usingJobData("clear", alarmProcessPOJO.getClear())
+	        		.usingJobData("alarmSingleFlag", alarmProcessPOJO.getAlarmSingleFlag())
 	        		.build();
 			/* 某个时间之后重复执行
 			SimpleTrigger simpleTrigger = TriggerBuilder.newTrigger().withIdentity(triggerName, triggerGroupName)

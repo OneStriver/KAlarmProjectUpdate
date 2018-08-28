@@ -5,6 +5,8 @@ import java.util.Date;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
@@ -29,12 +31,14 @@ public class HandleTaskJob implements Job {
 	    JobDataMap dataMap = context.getJobDetail().getJobDataMap();
 	    //创建对象的时候,赋值清除时间
 	    AlarmProcessPOJO alarmProcessPOJO = 
-	    		new AlarmProcessPOJO(dataMap.getString("source"), dataMap.getString("equipName"), dataMap.getInt("code"), 
+	    		new AlarmProcessPOJO(
+	    				dataMap.getString("source"), dataMap.getString("equipName"), 
+	    				dataMap.getInt("code"), dataMap.getString("alarmSingleFlag"), 
 	    				dataMap.getString("alarmType"), dataMap.getString("severity"), dataMap.getString("desc"), 
 	    				dataMap.getString("cause"), dataMap.getString("treatment"), dataMap.getString("addition"), dataMap.getString("target"), 
 	    				dataMap.getString("raised_time"), dataMap.getString("last_change_time"),
 	    				dataMap.getString("ack_time"), dataMap.getString("ack_user"),
-	    				TimeUtil.getNowTime(), "无(超时)",
+	    				null, null,
 	    				dataMap.getString("addition_pairs"),dataMap.getString("clear"));
 	    //处理超时消息
 	    logger.info(">>>>>>>>处理告警超时任务的时间:"+sdf.format(new Date()));
@@ -56,18 +60,11 @@ public class HandleTaskJob implements Job {
 			writeDbAlarmLog.setAlarmCode(alarmProcessPOJO.getCode());
 			//发生时间
 			writeDbAlarmLog.setRaisedTime(alarmProcessPOJO.getRaised_time());
-			//确认时间
-			writeDbAlarmLog.setAckTime(alarmProcessPOJO.getAck_time());
-			//确认UId
-			if (alarmProcessPOJO.getAck_user() != null) {
-				writeDbAlarmLog.setAckUserName("无");
-			}
 			//清除时间
-			writeDbAlarmLog.setClearTime(alarmProcessPOJO.getCleared_time());
+			writeDbAlarmLog.setClearTime(TimeUtil.getNowTime());
 			//清除UId
-			if (alarmProcessPOJO.getCleared_user() != null) {
-				writeDbAlarmLog.setClearUserName("无");
-			}
+			writeDbAlarmLog.setClearUserName("超时自动清除");
+			
 			//附加信息
 			writeDbAlarmLog.setAdditionPairs(alarmProcessPOJO.getAddition_pairs());
 			//查询数据库时候有该条记录
@@ -85,12 +82,31 @@ public class HandleTaskJob implements Job {
 			
 			if(writeDbAlarmLog.getClearTime()!=null){
 				//这属于清除告警数据
-				logger.info(">>>>>>>>>>这是清除告警的消息");
+				logger.info(">>>>>>>>>>这是超时自动清除告警的消息");
+				writeDbAlarmLog.setClearFlag(1);
 				writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
-				writeDbAlarmLog.setLastChangeTime(writeDbAlarmLog.getClearTime());
 				historyAlarmServiceTemp.updateHistoryAlarmLogByObject(writeDbAlarmLog);
+				//推送pad清除消息
+				String sendTopicStr = "/alarm/padClearAlarm";
+				logger.info(">>>>>>>>>>>>>>>>>>>>>>超时自动清除告警推送的主题:"+sendTopicStr);
+				//发送清除告警消息
+				sendAutoClearAlarmToMqtt(writeDbAlarmLog.getSerialNumber().toString(),0,sendTopicStr);
+				//清空缓存的计数
+				GlobalHashMap.cacheAlarmCountMap.put(alarmProcessPOJO.getAlarmSingleFlag(),0);
 			}
 			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void sendAutoClearAlarmToMqtt(String content, int qos, String topic) {
+		MqttClient mqttClient = GlobalHashMap.mqttClientMap.get("mqttClient");
+		try {
+			MqttMessage message = new MqttMessage(content.getBytes("UTF-8"));
+			message.setQos(qos);
+			message.setRetained(false);
+			mqttClient.publish(topic, message);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

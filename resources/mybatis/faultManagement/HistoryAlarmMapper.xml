@@ -152,10 +152,20 @@
 		<if test="pageData.endDatetime != null and pageData.endDatetime != ''">
 			and alarmLog.raised_time &lt;= #{pageData.endDatetime} 
 		</if>
-		order by alarmLog.lastChangeTime
+			ORDER BY STR_TO_DATE(alarmLog.lastChangeTime,'%Y-%m-%d %H:%i:%s') DESC
 		<if test="pageSize!=0">
 			limit #{currentStartIndex},#{pageSize}
 		</if>
+	</select>
+	
+	<!--APP条件过滤告警日志记录 -->
+	<select id="appOptionFindAlarmLog" parameterType="string" resultType="com.fh.entity.faultManagement.historyAlarm.DbAlarmLog">
+		select
+		<include refid="alarmLogField"></include>
+		from
+		<include refid="alarmLogTableName"></include> alarmLog
+		where 1=1
+		and serialNumber<![CDATA[ >= ]]>#{serialNumber}
 	</select>
 	
 	<!--按照设备类型统计 -->
@@ -228,9 +238,13 @@
 		update
 		<include refid="alarmLogTableName"></include>
 		set
-			lastChangeTime=#{lastChangeTime},
+			<if test="clearFlag==1">
 			clearTime=#{clearTime},
 			clearUserName=#{clearUserName}
+			</if>
+			<if test="clearFlag==0">
+			lastChangeTime=#{lastChangeTime}
+			</if>
 		where 1=1
 			and serialNumber = #{serialNumber}
 	</update>

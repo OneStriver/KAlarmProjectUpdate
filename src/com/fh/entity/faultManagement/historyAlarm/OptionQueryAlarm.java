@@ -1,5 +1,7 @@
 package com.fh.entity.faultManagement.historyAlarm;
 
+import java.util.Map;
+
 public class OptionQueryAlarm {
 
 	private String startDatetime;
@@ -20,6 +22,7 @@ public class OptionQueryAlarm {
 	private String alarmClearTime;
 	private String alarmClearPerson;
 	private String optionPieChart;
+	private Map<String,Object> additionMap;
 
 	public String getStartDatetime() {
 		return startDatetime;
@@ -165,4 +168,12 @@ public class OptionQueryAlarm {
 		this.optionPieChart = optionPieChart;
 	}
 
+	public Map<String, Object> getAdditionMap() {
+		return additionMap;
+	}
+
+	public void setAdditionMap(Map<String, Object> additionMap) {
+		this.additionMap = additionMap;
+	}
+	
 }

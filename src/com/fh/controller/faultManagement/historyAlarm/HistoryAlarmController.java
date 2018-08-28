@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
+import com.alibaba.fastjson.JSON;
 import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.controller.base.BaseController;
 import com.fh.entity.Page;
@@ -35,6 +36,7 @@ import com.fh.entity.faultManagement.historyAlarm.OptionQueryAlarm;
 import com.fh.entity.faultManagement.realTimeAlarm.ConfirmClearAlarmEntity;
 import com.fh.entity.kAlarm.AlarmInfoEntity;
 import com.fh.entity.system.User;
+import com.fh.mqtt.MqttMessageServer;
 import com.fh.service.alarmAttr.AlarmAttributeService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 import com.fh.service.faultManagement.realTimeAlarm.RealTimeAlarmService;
@@ -63,17 +65,23 @@ public class HistoryAlarmController extends BaseController {
 	private List<AlarmAttributeEntity> alarmAttributeList;
 	private AlarmAttributeEntity alarmAttributeEntity;
 	
+	private Gson gson = new Gson();
+	
 	@Resource(name="historyAlarmService")
 	private HistoryAlarmService historyAlarmService;
 	@Resource(name="realTimeAlarmService")
 	private RealTimeAlarmService realTimeAlarmService;
 	@Resource(name="alarmAttributeService")
 	private AlarmAttributeService alarmAttributeService;
+	@Resource(name="mqttMessageServer")
+	private MqttMessageServer mqttMessageServer;
 	
 	@PostConstruct
 	public void cacheAlarmAttribute() throws Exception {
 		cacheUserMap.clear();
-		alarmAttributeList = GlobalHashMap.alarmAttributeMap.get("alarmAttributeList");
+		Page page = new Page();
+		//缓存所有告警属性值
+    	alarmAttributeList = alarmAttributeService.list(page);
     }
 	
 	/**
@@ -123,11 +131,15 @@ public class HistoryAlarmController extends BaseController {
 			List<ConfirmClearAlarmEntity> confirmClearList = gson.fromJson(confirmClearListStr,new TypeToken<List<ConfirmClearAlarmEntity>>(){}.getType());
 			for (int i = 0; i < confirmClearList.size(); i++) {
 				ConfirmClearAlarmEntity confirmClearAlarmEntity = confirmClearList.get(i);
+				dbAlarmLog.setClearFlag(1);
 				dbAlarmLog.setSerialNumber(Long.valueOf(confirmClearAlarmEntity.getSerialNumber()));
-				dbAlarmLog.setLastChangeTime(time);
 				dbAlarmLog.setClearTime(time);
 				dbAlarmLog.setClearUserName(confirmClearAlarmEntity.getAlarmClearPerson());
 				historyAlarmService.updateHistoryAlarmLogByObject(dbAlarmLog);
+				String clearAlarmSingleFlag = confirmClearAlarmEntity.getAlarmSource() + ":" + confirmClearAlarmEntity.getAlarmCode();
+				GlobalHashMap.cacheAlarmCountMap.put(clearAlarmSingleFlag,0);
+				//发送清除告警消息
+				sendClearAlarmToPadMqtt(dbAlarmLog.getSerialNumber().toString());
 			}
 		} catch (Exception e) {
 			String returnStr = gson.toJson("1"); //1表示失败
@@ -135,6 +147,13 @@ public class HistoryAlarmController extends BaseController {
 		}
 		String returnStr = gson.toJson("0"); //0表示成功
 		return returnStr;
+	}
+	
+	// 发送消息到MQTT
+	private void sendClearAlarmToPadMqtt(String serialNumber) {
+		String sendTopicStr = "/alarm/padClearAlarm";
+		logger.info(">>>>>>>>>>>>>>>>>>>>>>手动清除告警推送的主题:"+sendTopicStr);
+		mqttMessageServer.send(serialNumber, 0,sendTopicStr);
 	}
 	
 	/**
@@ -173,13 +192,17 @@ public class HistoryAlarmController extends BaseController {
 			}
 			//告警序号
 			optionQueryAlarm.setAlarmNumber(String.valueOf(dbAlarmLog.getSerialNumber()));
+			//告警源
+			optionQueryAlarm.setAlarmSource(dbAlarmLog.getAlarmSource());
+			//告警码
+			optionQueryAlarm.setAlarmCode(alarmAttributeEntity.getAlarmCode());
 			//告警等级
-			String alarmLevelStr = alarmAttributeEntity.getAlarmSeverityName();
+			/*String alarmLevelStr = alarmAttributeEntity.getAlarmSeverityName();
 			if("".equals(alarmLevelStr) || alarmLevelStr==null){
 				optionQueryAlarm.setAlarmLevel("未知");
 			}else{
 				optionQueryAlarm.setAlarmLevel(alarmLevelStr);
-			}
+			}*/
 			//告警详情
 			optionQueryAlarm.setAlarmDetail(dbAlarmLog.getAdditionPairs());
 			//告警发生时间
@@ -203,6 +226,48 @@ public class HistoryAlarmController extends BaseController {
 		map.put("total", list.size());  
         map.put("rows", list);
         return new PageBean(page, pageSize, list, alarmLogCount);
+	}
+	
+	/**
+	 * APP条件查询历史告警
+	 */
+	@RequestMapping(value="/appQueryHistoryAlarm",produces="text/html;charset=UTF-8")
+	@ResponseBody
+	public String appQueryHistoryAlarm(@RequestParam(value="serialNumber") String serialNumber) throws Exception{
+		logBefore(logger, ">>>>>>>>APP条件查询历史告警>>>>>>>>");
+		List<OptionQueryAlarm> list = new ArrayList<OptionQueryAlarm>();
+		//条件查询告警日志
+		List<DbAlarmLog> allDbAlarmLog = historyAlarmService.appOptionFindAlarmLog(serialNumber);
+		//循环处理数据
+		for (DbAlarmLog dbAlarmLog : allDbAlarmLog) {
+			OptionQueryAlarm optionQueryAlarm = new OptionQueryAlarm();
+			//告警详情
+			for (int i = 0; i < alarmAttributeList.size(); i++) {
+				AlarmAttributeEntity eachAlarmAttribute = alarmAttributeList.get(i);
+				String[] splitTopic = dbAlarmLog.getAlarmSource().split("/");
+				if((Integer.valueOf(dbAlarmLog.getAlarmCode()) == eachAlarmAttribute.getAlarmCode())
+					&& (splitTopic[0].equals(eachAlarmAttribute.getDeviceType()))){
+					alarmAttributeEntity = eachAlarmAttribute;
+					break;
+				}
+			}
+			//告警序号
+			optionQueryAlarm.setAlarmNumber(String.valueOf(dbAlarmLog.getSerialNumber()));
+			//告警源
+			optionQueryAlarm.setAlarmSource(dbAlarmLog.getAlarmSource());
+			//告警码
+			optionQueryAlarm.setAlarmCode(alarmAttributeEntity.getAlarmCode());
+			//转换addition_pairs之后的数据
+			Map<String,Object> parseObject = JSON.parseObject(dbAlarmLog.getAdditionPairs());
+			optionQueryAlarm.setAdditionMap(parseObject);
+			//告警发生时间
+			optionQueryAlarm.setAlarmHappenTime(dbAlarmLog.getRaisedTime());
+			//告警原因
+			optionQueryAlarm.setAlarmReason(alarmAttributeEntity.getAlarmCause());
+			list.add(optionQueryAlarm);
+		}
+		String jsonStr = gson.toJson(list);
+        return jsonStr;
 	}
 	
 	/**

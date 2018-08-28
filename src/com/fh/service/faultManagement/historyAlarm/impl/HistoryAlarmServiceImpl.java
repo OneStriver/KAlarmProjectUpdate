@@ -77,6 +77,15 @@ public class HistoryAlarmServiceImpl implements HistoryAlarmService {
 		return (List<DbAlarmLog>)dao.findForList("HistoryAlarmMapper.findAllDbAlarmLog", page);
 	}
 	
+	/**
+	 * App条件过滤日志记录
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public List<DbAlarmLog> appOptionFindAlarmLog(String serialNumber) throws Exception {
+		return (List<DbAlarmLog>)dao.findForList("HistoryAlarmMapper.appOptionFindAlarmLog", serialNumber);
+	}
+	
 	
 
 	@Override

@@ -3,6 +3,8 @@ package com.fh.alarmProcess.message;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.paho.client.mqttv3.MqttClient;
+
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
 import com.fh.alarmProcess.alarmMsgPojo.AlarmToDBPOJO;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
@@ -13,14 +15,7 @@ import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
  * Quartz配置属性(Job,JobGroupName,Trigger,TriggerGroupName)
  */
 public class GlobalHashMap {
-
-	// Job
-	private static String jobName = "AlarmJob";
-	private static String jobGroupName = "AlarmJobGroup";
-	// Trigger
-	private static String triggerName = "AlarmTrigger";
-	private static String triggerGroupName = "AlarmTriggerGroup";
-
+	
 	// 缓存所有的中间数据
 	public static ConcurrentHashMap<String, AlarmProcessPOJO> cacheAlarmProcessDataMap = new ConcurrentHashMap<String, AlarmProcessPOJO>();
 	// 缓存写入数据库中的记录
@@ -29,33 +24,19 @@ public class GlobalHashMap {
 	public static ConcurrentHashMap<String, String> equipNameSourceCodeInfoMap = new ConcurrentHashMap<String, String>();
 	//缓存数据库中所有的属性值
 	public static ConcurrentHashMap<String, List<AlarmAttributeEntity>> alarmAttributeMap = new ConcurrentHashMap<String, List<AlarmAttributeEntity>>();
-	//緩存
+	//緩存 HistoryAlarmService
 	public static ConcurrentHashMap<String, HistoryAlarmService> historyAlarmServiceMap = new ConcurrentHashMap<String, HistoryAlarmService>();
-	
-	public static ConcurrentHashMap<String, AlarmProcessPOJO> getCacheAlarmProcessDataMap() {
-		return cacheAlarmProcessDataMap;
-	}
+	//緩存 MqttClient
+	public static ConcurrentHashMap<String, MqttClient> mqttClientMap = new ConcurrentHashMap<String, MqttClient>();
+	//限制告警合并多少个上报一次
+	public static ConcurrentHashMap<String,Integer> cacheAlarmCountMap = new ConcurrentHashMap<String, Integer>();
 
-	public static void setCacheAlarmProcessDataMap(
-			ConcurrentHashMap<String, AlarmProcessPOJO> cacheAlarmProcessDataMap) {
-		GlobalHashMap.cacheAlarmProcessDataMap = cacheAlarmProcessDataMap;
-	}
-
-	public static ConcurrentHashMap<String, AlarmToDBPOJO> getAlmToDBHashMap() {
-		return almToDBHashMap;
-	}
-
-	public static void setAlmToDBHashMap(ConcurrentHashMap<String, AlarmToDBPOJO> almToDBHashMap) {
-		GlobalHashMap.almToDBHashMap = almToDBHashMap;
-	}
-
-	public static ConcurrentHashMap<String, String> getEquipNameSourceCodeInfoMap() {
-		return equipNameSourceCodeInfoMap;
-	}
-
-	public static void setEquipNameSourceCodeInfoMap(ConcurrentHashMap<String, String> equipNameSourceCodeInfoMap) {
-		GlobalHashMap.equipNameSourceCodeInfoMap = equipNameSourceCodeInfoMap;
-	}
+	// Job
+	private static String jobName = "AlarmJob";
+	private static String jobGroupName = "AlarmJobGroup";
+	// Trigger
+	private static String triggerName = "AlarmTrigger";
+	private static String triggerGroupName = "AlarmTriggerGroup";
 
 	public static String getJobName(String alarmSingleFalg) {
 		return jobName+"-"+alarmSingleFalg;
