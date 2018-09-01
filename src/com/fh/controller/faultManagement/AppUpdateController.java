@@ -1,16 +1,12 @@
 package com.fh.controller.faultManagement;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.Properties;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -28,8 +24,10 @@ import com.google.gson.Gson;
 public class AppUpdateController {
 	
 	private static Logger logger = Logger.getLogger(MqttMessageServer.class);
-	private String updateZipPath = "D:\\AppUpdateVersion.zip";
+	private String updateZipPath = "/home/app";
 	private Gson gson = new Gson();
+	private Properties properties = new Properties();
+	
 	/**
 	 * 获取版本号信息
 	 */
@@ -37,27 +35,23 @@ public class AppUpdateController {
 	@ResponseBody
 	public String getVersionInfo(String versionNumber){
 		String updateFlag = "0";
-		//获取某个路径下面的文件
-		String[] versionNumberArray = versionNumber.trim().split("\\.");
-		File updateAppFile = new File(updateZipPath);
-		try(ZipFile zipFile = new ZipFile(updateAppFile);
-			InputStream inputStream = new BufferedInputStream(new FileInputStream(updateAppFile)); 
-			ZipInputStream zipInputStream = new ZipInputStream(inputStream);) {
-			ZipEntry zipEntry; 
-			while ((zipEntry = zipInputStream.getNextEntry()) != null) { 
-				if (zipEntry.isDirectory()) {
-					logger.info("文件名:" + zipEntry.getName());
-				}
-				String fileName = zipEntry.getName();
-				if(fileName.endsWith(".properties")){
-					logger.info("文件名:" + fileName + ",大小:"+ zipEntry.getSize() + "Bytes."); 
-					Properties properties = new Properties();
-					properties.load(zipFile.getInputStream(zipEntry));
+		try {
+			//获取某个路径下面的文件
+			String[] versionNumberArray = versionNumber.trim().split("\\.");
+			File updateAppFile = new File(updateZipPath);
+		    File[] tempList = updateAppFile.listFiles();
+			for (int i = 0; i < tempList.length; i++) {
+				File tempFile = tempList[i];
+				if(tempFile.getName().endsWith(".properties")){
+					InputStream inputStream = new BufferedInputStream(new FileInputStream(tempFile));
+					properties.load(inputStream);
+					properties.getProperty("appVersion");
 					String propertyStr = properties.getProperty("appVersion");
+					logger.info("版本号信息:"+propertyStr);
 					String[] propertyStrArray = propertyStr.split("\\.");
-					for (int i = 0; i < propertyStrArray.length; i++) {
-						Integer sendValue = Integer.valueOf(versionNumberArray[i]);
-						Integer getValue = Integer.valueOf(propertyStrArray[i]);
+					for (int j = 0; j < propertyStrArray.length; j++) {
+						Integer sendValue = Integer.valueOf(versionNumberArray[j]);
+						Integer getValue = Integer.valueOf(propertyStrArray[j]);
 						if(sendValue<getValue){
 							updateFlag=  "1";
 							break;
@@ -65,9 +59,10 @@ public class AppUpdateController {
 					}
 				}
 			}
-		}catch (Exception e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		logger.info(">>>>>>>>返回值>>>>>>>>:"+updateFlag);
 		return gson.toJson(updateFlag);
 	}
 	
@@ -75,24 +70,20 @@ public class AppUpdateController {
 	public void getApkFile(HttpServletResponse response){
 		//获取某个路径下面的文件
 		InputStream apkInputStream = null;
-		File updateAppFile = new File(updateZipPath);
-		try(ZipFile zipFile = new ZipFile(updateAppFile);
-			InputStream inputStream = new BufferedInputStream(new FileInputStream(updateAppFile)); 
-			ZipInputStream zipInputStream = new ZipInputStream(inputStream);) {
-			ZipEntry zipEntry; 
-			while ((zipEntry = zipInputStream.getNextEntry()) != null) { 
-				String fileName = zipEntry.getName();
-				if (zipEntry.isDirectory()) {
-					System.err.println("不是APK文件");
-				}else if(fileName.endsWith(".properties")){
-					System.err.println("文件名:" + zipEntry.getName());
-				}else{
-					apkInputStream = zipFile.getInputStream(zipEntry);
+		try {
+			File updateAppFile = new File(updateZipPath);
+		    File[] tempList = updateAppFile.listFiles();
+			for (int i = 0; i < tempList.length; i++) {
+				File tempFile = tempList[i];
+				if(tempFile.getName().endsWith(".apk")){
+					apkInputStream = new FileInputStream(tempFile);
 				}
 			}
-			setFileDownloadHeader(response, "UpdateAppVersion.apk");
-			IOUtils.copy(apkInputStream, response.getOutputStream());
-			apkInputStream.close();
+			if(apkInputStream!=null){
+				logger.info(">>>>>>>>下载APK文件>>>>>>>>");
+				setFileDownloadHeader(response, "UpdateAppVersion.apk");
+				IOUtils.copy(apkInputStream, response.getOutputStream());
+			}
 		}catch (Exception e) {
 			e.printStackTrace();
 		}

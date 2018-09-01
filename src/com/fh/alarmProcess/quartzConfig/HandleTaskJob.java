@@ -14,6 +14,7 @@ import org.quartz.JobExecutionException;
 
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
 import com.fh.alarmProcess.message.GlobalHashMap;
+import com.fh.entity.AlarmStrategyEntity;
 import com.fh.entity.PageData;
 import com.fh.entity.faultManagement.historyAlarm.DbAlarmLog;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
@@ -92,7 +93,10 @@ public class HandleTaskJob implements Job {
 				//发送清除告警消息
 				sendAutoClearAlarmToMqtt(writeDbAlarmLog.getSerialNumber().toString(),0,sendTopicStr);
 				//清空缓存的计数
-				GlobalHashMap.cacheAlarmCountMap.put(alarmProcessPOJO.getAlarmSingleFlag(),0);
+				AlarmStrategyEntity alarmStrategyEntity = GlobalHashMap.cacheAlarmCountMap.get(alarmProcessPOJO.getAlarmSingleFlag());
+				alarmStrategyEntity.setUpdateAlarmFrequency(0);
+				alarmStrategyEntity.setSendMqttAlarmFrequency(0);
+				GlobalHashMap.cacheAlarmCountMap.put(alarmProcessPOJO.getAlarmSingleFlag(),alarmStrategyEntity);
 			}
 			
 		} catch (Exception e) {

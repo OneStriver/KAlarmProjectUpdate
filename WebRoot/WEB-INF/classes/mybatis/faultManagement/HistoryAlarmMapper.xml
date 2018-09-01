@@ -165,7 +165,8 @@
 		from
 		<include refid="alarmLogTableName"></include> alarmLog
 		where 1=1
-		and serialNumber<![CDATA[ >= ]]>#{serialNumber}
+		and alarmCode=3
+		and serialNumber<![CDATA[ > ]]>#{serialNumber}
 	</select>
 	
 	<!--按照设备类型统计 -->
@@ -243,6 +244,7 @@
 			clearUserName=#{clearUserName}
 			</if>
 			<if test="clearFlag==0">
+			additionPairs=#{additionPairs},
 			lastChangeTime=#{lastChangeTime}
 			</if>
 		where 1=1

@@ -7,6 +7,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 
 import com.fh.alarmProcess.alarmMsgPojo.AlarmProcessPOJO;
 import com.fh.alarmProcess.alarmMsgPojo.AlarmToDBPOJO;
+import com.fh.entity.AlarmStrategyEntity;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 
@@ -29,7 +30,7 @@ public class GlobalHashMap {
 	//緩存 MqttClient
 	public static ConcurrentHashMap<String, MqttClient> mqttClientMap = new ConcurrentHashMap<String, MqttClient>();
 	//限制告警合并多少个上报一次
-	public static ConcurrentHashMap<String,Integer> cacheAlarmCountMap = new ConcurrentHashMap<String, Integer>();
+	public static ConcurrentHashMap<String,AlarmStrategyEntity> cacheAlarmCountMap = new ConcurrentHashMap<String, AlarmStrategyEntity>();
 
 	// Job
 	private static String jobName = "AlarmJob";

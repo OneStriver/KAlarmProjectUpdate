@@ -16,11 +16,11 @@ import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.alarmProcess.mqttMsgProcess.ProcessAlarmProcessMsg;
 import com.fh.alarmProcess.quartzConfig.HandleTaskJob;
 import com.fh.alarmProcess.quartzConfig.QuartzManager;
+import com.fh.entity.AlarmStrategyEntity;
 import com.fh.entity.PageData;
 import com.fh.entity.alarmAttr.AlarmAttributeEntity;
 import com.fh.entity.faultManagement.historyAlarm.DbAlarmLog;
 import com.fh.mqtt.MqttMessageServer;
-import com.fh.readProperty.PropertyReadUtil;
 import com.fh.service.alarmProcess.MqttMessageProcessService;
 import com.fh.service.faultManagement.historyAlarm.HistoryAlarmService;
 import com.fh.util.TimeUtil;
@@ -93,8 +93,10 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 				}
 			}
 			if(alarmAttributeEntity==null){
+				logger.info(">>>>>>>>没有找到该类型告警对应的属性实体类");
 				return;
 			}
+			logger.info(">>>>>>>>>>>上报消息是否是清除告警的消息:"+originalAlarmClear);
 			//告警码
 			alarmProcessPOJO.setCode(Integer.valueOf(originalAlarmCode));
 			//告警类型
@@ -119,24 +121,26 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			String alarmSingleFlag = topic.substring(1+splitTopic[1].length()+1,topic.length()) + ":" + alarmOriginalPOJO.getCode();
 			//缓存标志位
 			alarmProcessPOJO.setAlarmSingleFlag(alarmSingleFlag);
-			
-			//相同告警累计多少次进行处理(告警清除不需要)
+			//是否开启更新数据库策略和推送策略
 			int limitStrategy = alarmAttributeEntity.getLimitStrategy();
-			Integer startCountSourceCodeValue = GlobalHashMap.cacheAlarmCountMap.get(alarmSingleFlag);
-			if(limitStrategy==1){
-				if ("false".equals(originalAlarmClear)) {
-					if (startCountSourceCodeValue == null) {
-						startCountSourceCodeValue = 0;
-						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, startCountSourceCodeValue + 1);
-					} else {
-						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, startCountSourceCodeValue + 1);
-					}
+			int pushStrategy = alarmAttributeEntity.getPushStrategy();
+			alarmProcessPOJO.setUpdateAlarmStrategy(limitStrategy);
+			alarmProcessPOJO.setSendAlarmStrategy(pushStrategy);
+			//告警更新数据库和推送MQTT策略
+			AlarmStrategyEntity alarmStrategyEntity = GlobalHashMap.cacheAlarmCountMap.get(alarmSingleFlag);
+			if("false".equals(originalAlarmClear)){
+				if (alarmStrategyEntity == null) {
+					alarmStrategyEntity = new AlarmStrategyEntity();
+					alarmStrategyEntity.setUpdateAlarmFrequency(1);
+					alarmStrategyEntity.setSendMqttAlarmFrequency(1);
+					GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, alarmStrategyEntity);
+				} else {
+					alarmStrategyEntity.setUpdateAlarmFrequency(alarmStrategyEntity.getUpdateAlarmFrequency()+1);
+					alarmStrategyEntity.setSendMqttAlarmFrequency(alarmStrategyEntity.getSendMqttAlarmFrequency()+1);
+					GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, alarmStrategyEntity);
 				}
 			}
-			
-			//告警合并的次数
-			Integer mergeAlarmCount = PropertyReadUtil.getInstance().getMergeAlarmCount();
-			
+			alarmProcessPOJO.setAlarmStrategyEntity(alarmStrategyEntity);
 			// 1表示开启自动清除 	0表示没有开启自动清除
 			int autoClearEnable = alarmAttributeEntity.getAutoClearEnable();
 			//自动清除时间(以秒为单位)
@@ -147,9 +151,6 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 					QuartzManager.removeJob(GlobalHashMap.getJobName(alarmSingleFlag),
 							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
 							GlobalHashMap.getTriggerGroupName(alarmSingleFlag));
-				}
-				if(limitStrategy==1){
-					GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, 0);
 				}
 			}else if ("false".equals(originalAlarmClear)) {
 				if(autoClearEnable==1){
@@ -162,17 +163,6 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 							GlobalHashMap.getJobGroupName(alarmSingleFlag), GlobalHashMap.getTriggerName(alarmSingleFlag),
 							GlobalHashMap.getTriggerGroupName(alarmSingleFlag), HandleTaskJob.class, autoClearTimeout, alarmProcessPOJO);
 				}
-				if (limitStrategy == 1) {
-					Integer countSourceCodeValue = GlobalHashMap.cacheAlarmCountMap.get(alarmSingleFlag);
-					if (countSourceCodeValue == 1) {
-						// 不做处理操作
-					} else {
-						if (countSourceCodeValue == mergeAlarmCount) {
-							GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag, 0);
-						}
-						return;
-					}
-				}
 			}
 			//处理MQTT接收到的消息
 			processMqttMessage(alarmProcessPOJO);
@@ -182,6 +172,8 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 	}
 	
 	private void processMqttMessage(AlarmProcessPOJO alarmProcessPOJO) {
+		//处理告警的策略实体类(缓存每种告警更新数据库和推送的次数)
+		AlarmStrategyEntity processAlarmStrategyEntity = alarmProcessPOJO.getAlarmStrategyEntity();
 		//告警清除
 		String alarmSingleFlag = alarmProcessPOJO.getAlarmSingleFlag();
 		//每次将对象置为null
@@ -198,7 +190,6 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			writeDbAlarmLog.setRaisedTime(alarmProcessPOJO.getRaised_time());
 			//是否是清除消息
 			String clearFlag = alarmProcessPOJO.getClear();
-			logger.info(">>>>>>>>>>>上报消息是否是清除告警:"+clearFlag);
 			if("true".equals(clearFlag)){
 				alarmProcessPOJO.setCleared_time(TimeUtil.getNowTime());
 				//清除时间
@@ -215,6 +206,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 			
 			if(dbAlarmLogs.size()==0 && writeDbAlarmLog.getClearTime()!=null){
 				//没有上报过告警直接上报告警清除,不处理
+				logger.info(">>>>>>>>没有上报过告警直接上报告警清除,不处理");
 				return;
 			}else if(dbAlarmLogs.size()==0 && writeDbAlarmLog.getClearTime()==null){
 				//第一次告警发生时间和最后更新时间一样
@@ -236,6 +228,7 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 				if(cacheDbAlarmLog==null){
 					//这是新上报的清除,还没有告警,直接丢掉
 					if(writeDbAlarmLog.getClearTime()!=null){
+						logger.info(">>>>>>>>该类型的告警已经清除,这是重新上报的告警清除,还没有告警");
 						return;
 					}
 					//第一次告警发生时间和最后更新时间一样
@@ -256,23 +249,56 @@ public class MqttMessageProcessServiceImpl implements MqttMessageProcessService 
 						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
 						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
 						//清除缓存中的计数
-						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag,0);
+						processAlarmStrategyEntity.setUpdateAlarmFrequency(0);
+						GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag,processAlarmStrategyEntity);
 					}else{
 						//这是属于重复的告警
-						logger.info(">>>>>>>>>>这是重复告警的消息");
-						String nowTime = TimeUtil.getNowTime();
-						if("false".equals(clearFlag)){
-							writeDbAlarmLog.setClearFlag(0);
+						int updateAlarmFrequency = processAlarmStrategyEntity.getUpdateAlarmFrequency();
+						int updateAlarmStrategyDb = alarmProcessPOJO.getUpdateAlarmStrategy();
+						if(updateAlarmStrategyDb==0){
+							logger.info(">>>>>>>>>>这是重复告警消息");
+							String nowTime = TimeUtil.getNowTime();
+							if("false".equals(clearFlag)){
+								writeDbAlarmLog.setClearFlag(0);
+							}
+							writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
+							writeDbAlarmLog.setLastChangeTime(nowTime);
+							historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
+							alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
+						}else if(updateAlarmStrategyDb>0){
+							if(updateAlarmFrequency==updateAlarmStrategyDb){
+								logger.info(">>>>>>>>>>这是有限制策略的重复告警消息");
+								String nowTime = TimeUtil.getNowTime();
+								if("false".equals(clearFlag)){
+									writeDbAlarmLog.setClearFlag(0);
+								}
+								writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
+								writeDbAlarmLog.setLastChangeTime(nowTime);
+								historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
+								alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
+								//清空更新告警的次数
+								processAlarmStrategyEntity.setUpdateAlarmFrequency(0);
+								GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag,processAlarmStrategyEntity);
+							}
 						}
-						writeDbAlarmLog.setSerialNumber(cacheDbAlarmLog.getSerialNumber());
-						writeDbAlarmLog.setLastChangeTime(nowTime);
-						historyAlarmService.updateHistoryAlarmLogByObject(writeDbAlarmLog);
-						alarmProcessPOJO.setNo(cacheDbAlarmLog.getSerialNumber());
 					}
 				}
 			}
 			// 发送消息到MQTT
-			sendMsgToMqtt(alarmProcessPOJO);
+			int sendAlarmFrequency = processAlarmStrategyEntity.getSendMqttAlarmFrequency();
+			int sendAlarmStrategyDb = alarmProcessPOJO.getSendAlarmStrategy();
+			if(sendAlarmStrategyDb==0){
+				logger.info(">>>>>>>>>>这是发送MQTT消息");
+				sendMsgToMqtt(alarmProcessPOJO);
+			}else if(sendAlarmStrategyDb>0){
+				if(sendAlarmFrequency==sendAlarmStrategyDb){
+					logger.info(">>>>>>>>>>这是有限制策略的发送MQTT消息");
+					sendMsgToMqtt(alarmProcessPOJO);
+					//清空更新告警的次数
+					processAlarmStrategyEntity.setSendMqttAlarmFrequency(0);
+					GlobalHashMap.cacheAlarmCountMap.put(alarmSingleFlag,processAlarmStrategyEntity);
+				}
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -31,7 +31,7 @@ import com.fh.xmlParse.ParseTopicXmlUtil;
 public class MqttMessageServer {
 
 	private static Logger logger = Logger.getLogger(MqttMessageServer.class);
-	private static final String clientId = "KProjectAlarmModule123456";
+	private static final String clientId = "KProjectAlarmModule";
 	private static MqttClient mqttClient = null;  
     private static int[] allQos;  
     private static String[] allTopics;

@@ -11,7 +11,8 @@ public class AlarmAttributeEntity {
 	private String alarmCause_en;
 	private String treatment;
 	private String addition;
-	private int limitStrategy;
+	private int limitStrategy;	//更新告警的策略(次数)
+	private int pushStrategy;	//发送告警的策略(次数)
 	private int autoClearEnable;
 	private int autoClearTimeout;
 	private int alarmSuppress;
@@ -101,6 +102,14 @@ public class AlarmAttributeEntity {
 
 	public void setLimitStrategy(int limitStrategy) {
 		this.limitStrategy = limitStrategy;
+	}
+	
+	public int getPushStrategy() {
+		return pushStrategy;
+	}
+
+	public void setPushStrategy(int pushStrategy) {
+		this.pushStrategy = pushStrategy;
 	}
 
 	public int getAutoClearEnable() {

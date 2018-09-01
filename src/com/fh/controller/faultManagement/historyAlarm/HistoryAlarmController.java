@@ -25,6 +25,7 @@ import org.springframework.web.servlet.ModelAndView;
 import com.alibaba.fastjson.JSON;
 import com.fh.alarmProcess.message.GlobalHashMap;
 import com.fh.controller.base.BaseController;
+import com.fh.entity.AlarmStrategyEntity;
 import com.fh.entity.Page;
 import com.fh.entity.PageBean;
 import com.fh.entity.PageData;
@@ -136,10 +137,13 @@ public class HistoryAlarmController extends BaseController {
 				dbAlarmLog.setClearTime(time);
 				dbAlarmLog.setClearUserName(confirmClearAlarmEntity.getAlarmClearPerson());
 				historyAlarmService.updateHistoryAlarmLogByObject(dbAlarmLog);
-				String clearAlarmSingleFlag = confirmClearAlarmEntity.getAlarmSource() + ":" + confirmClearAlarmEntity.getAlarmCode();
-				GlobalHashMap.cacheAlarmCountMap.put(clearAlarmSingleFlag,0);
 				//发送清除告警消息
 				sendClearAlarmToPadMqtt(dbAlarmLog.getSerialNumber().toString());
+				String clearAlarmSingleFlag = confirmClearAlarmEntity.getAlarmSource() + ":" + confirmClearAlarmEntity.getAlarmCode();
+				AlarmStrategyEntity alarmStrategyEntity = GlobalHashMap.cacheAlarmCountMap.get(clearAlarmSingleFlag);
+				alarmStrategyEntity.setUpdateAlarmFrequency(0);
+				alarmStrategyEntity.setSendMqttAlarmFrequency(0);
+				GlobalHashMap.cacheAlarmCountMap.put(clearAlarmSingleFlag,alarmStrategyEntity);
 			}
 		} catch (Exception e) {
 			String returnStr = gson.toJson("1"); //1表示失败
@@ -231,7 +235,7 @@ public class HistoryAlarmController extends BaseController {
 	/**
 	 * APP条件查询历史告警
 	 */
-	@RequestMapping(value="/appQueryHistoryAlarm",produces="text/html;charset=UTF-8")
+	@RequestMapping(value="/appQueryHistoryAlarm",produces="application/json;charset=UTF-8")
 	@ResponseBody
 	public String appQueryHistoryAlarm(@RequestParam(value="serialNumber") String serialNumber) throws Exception{
 		logBefore(logger, ">>>>>>>>APP条件查询历史告警>>>>>>>>");

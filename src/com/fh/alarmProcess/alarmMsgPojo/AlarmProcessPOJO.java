@@ -2,6 +2,7 @@ package com.fh.alarmProcess.alarmMsgPojo;
 
 import java.util.Map;
 
+import com.fh.entity.AlarmStrategyEntity;
 import com.fh.util.TimeUtil;
 
 /**
@@ -33,7 +34,11 @@ public class AlarmProcessPOJO {
 	private Map<String,Object> additionMap;
 	private Long updateTime;
 	private String clear;
-
+	
+	private AlarmStrategyEntity alarmStrategyEntity;
+	private int updateAlarmStrategy;
+	private int sendAlarmStrategy;
+	
 	public AlarmProcessPOJO() {
 		updateTime = TimeUtil.getLongNowTime();
 	}
@@ -255,6 +260,30 @@ public class AlarmProcessPOJO {
 
 	public void setAdditionMap(Map<String, Object> additionMap) {
 		this.additionMap = additionMap;
+	}
+
+	public AlarmStrategyEntity getAlarmStrategyEntity() {
+		return alarmStrategyEntity;
+	}
+
+	public void setAlarmStrategyEntity(AlarmStrategyEntity alarmStrategyEntity) {
+		this.alarmStrategyEntity = alarmStrategyEntity;
+	}
+
+	public int getUpdateAlarmStrategy() {
+		return updateAlarmStrategy;
+	}
+
+	public void setUpdateAlarmStrategy(int updateAlarmStrategy) {
+		this.updateAlarmStrategy = updateAlarmStrategy;
+	}
+
+	public int getSendAlarmStrategy() {
+		return sendAlarmStrategy;
+	}
+
+	public void setSendAlarmStrategy(int sendAlarmStrategy) {
+		this.sendAlarmStrategy = sendAlarmStrategy;
 	}
 
 }

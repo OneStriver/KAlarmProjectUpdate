@@ -19,8 +19,6 @@ public class PropertyReadUtil {
 
 	private static Properties properties;
 	
-	// 合并告警次数
-	private Integer mergeAlarmCount;
 	private String originalAlarmMqttIp;
 	private Integer originalAlarmMqttPort;
 	// 项目名称
@@ -47,10 +45,9 @@ public class PropertyReadUtil {
 	 * 初始化属性
 	 */
 	private void getContext() {
-		this.mergeAlarmCount = Integer.valueOf(getProperty("mergeAlarmCount", "3"));
 		this.originalAlarmMqttIp = getProperty("originalAlarmMqttIp", "127.0.0.1");
 		this.originalAlarmMqttPort = Integer.valueOf(getProperty("originalAlarmMqttPort", "1883"));
-		this.projectName = getProperty("projectName", "1510");
+		this.projectName = getProperty("projectName", "");
 	}
 
 	/**
@@ -100,14 +97,6 @@ public class PropertyReadUtil {
 		}
 	}
 	
-	public Integer getMergeAlarmCount() {
-		return mergeAlarmCount;
-	}
-
-	public void setMergeAlarmCount(Integer mergeAlarmCount) {
-		this.mergeAlarmCount = mergeAlarmCount;
-	}
-
 	public String getOriginalAlarmMqttIp() {
 		return originalAlarmMqttIp;
 	}
