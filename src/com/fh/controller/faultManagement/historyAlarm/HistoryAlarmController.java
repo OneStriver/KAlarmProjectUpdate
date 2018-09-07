@@ -268,6 +268,20 @@ public class HistoryAlarmController extends BaseController {
 			optionQueryAlarm.setAlarmHappenTime(dbAlarmLog.getRaisedTime());
 			//告警原因
 			optionQueryAlarm.setAlarmReason(alarmAttributeEntity.getAlarmCause());
+			//最后更新时间
+			optionQueryAlarm.setAlarmLastChangeTime(dbAlarmLog.getLastChangeTime());
+			//清除时间
+			String appClearTime = dbAlarmLog.getClearTime();
+			if(appClearTime==null){
+				appClearTime="";
+			}
+			optionQueryAlarm.setAlarmClearTime(appClearTime);
+			//清除人
+			String appClearUserName = dbAlarmLog.getClearUserName();
+			if(appClearUserName==null){
+				appClearUserName="";
+			}
+			optionQueryAlarm.setAlarmClearPerson(appClearUserName);
 			list.add(optionQueryAlarm);
 		}
 		String jsonStr = gson.toJson(list);
